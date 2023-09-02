@@ -2,6 +2,7 @@ package wasify
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/wasify-io/wasify-go/mdk"
@@ -88,6 +89,7 @@ func (hf *HostFunction) convertParamsToStruct(ctx context.Context, m ModuleProxy
 	for i, packedData := range stackParams {
 		offset, offsetSize, data, err := m.Read(packedData)
 		if err != nil {
+			err = errors.Join(errors.New("can't read params packed data"), err)
 			return nil, err
 		}
 
@@ -153,22 +155,23 @@ func (hf *HostFunction) convertParamsToStruct(ctx context.Context, m ModuleProxy
 // | Read packedData slice, unpack, and extract data     |
 // |                                                     |
 // +-----------------------------------------------------+
-func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy, results Results, stackParams []uint64) (packedDatas []uint64, returnOffsets map[uint32]uint32, err error) {
+func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy, results Results, stackParams []uint64) ([]uint64, map[uint32]uint32, error) {
 	if len(results) != len(hf.Returns) {
 		return nil, nil, fmt.Errorf("results mismatch. expected: %d returned: %d", len(hf.Returns), len(results))
 	}
 
 	// first, allocate memory for each byte slice and store the offsets in a slice
-	packedDatas = make([]uint64, len(results))
+	packedDatas := make([]uint64, len(results))
 
 	// +1 len because for the offset which holds all offsets
-	returnOffsets = make(map[uint32]uint32, len(results)+1)
+	returnOffsets := make(map[uint32]uint32, len(results)+1)
 
 	for i, returnValue := range results {
 		offsetSize := uint32(len(returnValue))
 		offset, err := m.Malloc(offsetSize)
 		if err != nil {
-			return packedDatas, returnOffsets, err
+			err = errors.Join(errors.New("can't allocate memory for return value"), err)
+			return nil, nil, err
 		}
 
 		returnOffsets[offset] = offsetSize
@@ -178,7 +181,8 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 
 		err = m.Write(offset, returnValue)
 		if err != nil {
-			return packedDatas, returnOffsets, err
+			err = errors.Join(errors.New("can't write return value"), err)
+			return nil, nil, err
 		}
 
 		// pack the offset and size into a single uint64
@@ -189,7 +193,8 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	offsetSize := uint32(len(packedDatas) * 8)
 	offset, err := m.Malloc(offsetSize)
 	if err != nil {
-		return
+		err = errors.Join(errors.New("can't allocate memory for offset of packed return values"), err)
+		return nil, nil, err
 	}
 
 	returnOffsets[offset] = offsetSize
@@ -199,7 +204,8 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 
 	err = m.Write(offset, uint64ArrayToBytes(packedDatas))
 	if err != nil {
-		return
+		err = errors.Join(errors.New("can't write offset of packed return values"), err)
+		return nil, nil, err
 	}
 
 	packedData := mdk.PackUI64(offset, offsetSize)
@@ -208,7 +214,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 
 	packedDatas = append(packedDatas, packedData)
 
-	return
+	return packedDatas, returnOffsets, nil
 }
 
 // cleanup function is responsible for releasing memory allocated during the execution
@@ -227,6 +233,7 @@ func (hf *HostFunction) cleanup(m ModuleProxy, params Params, returnOffsets map[
 
 		err := m.Free(param.Offset)
 		if err != nil {
+			err = errors.Join(errors.New("can't free offset of param"), err)
 			return err
 		}
 
@@ -236,6 +243,7 @@ func (hf *HostFunction) cleanup(m ModuleProxy, params Params, returnOffsets map[
 	for offset := range returnOffsets {
 		err := m.Free(offset)
 		if err != nil {
+			err = errors.Join(errors.New("can't free offset of return value"), err)
 			return err
 		}
 

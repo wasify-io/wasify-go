@@ -2,6 +2,7 @@ package wasify
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/tetratelabs/wazero"
@@ -38,8 +39,14 @@ type wazeroModule struct {
 // Note: The context parameter is used for value lookup, such as for
 // logging. A canceled or otherwise done context will not prevent Close
 // from succeeding.
-func (r *wazeroModule) Close(ctx context.Context) error {
-	return r.mod.Close(ctx)
+func (m *wazeroModule) Close(ctx context.Context) error {
+	err := m.mod.Close(ctx)
+	if err != nil {
+		err = errors.Join(errors.New("can't close module"), err)
+		m.log.Error(err.Error())
+		return err
+	}
+	return nil
 }
 
 // GuestFunction returns a GuestFunction instance associated with the wazeroModule.
@@ -74,20 +81,21 @@ type wazeroGuestFunction struct {
 // If the function name is not "malloc" or "free", it logs the function call details.
 // It omits logging for "malloc" and "free" functions due to potential high frequency,
 // which could lead to excessive log entries and complicate debugging for host funcs.
-func (gf *wazeroGuestFunction) Invoke(params ...uint64) (res []uint64, err error) {
+func (gf *wazeroGuestFunction) Invoke(params ...uint64) ([]uint64, error) {
 
 	if gf.name != "malloc" && gf.name != "free" {
 		gf.log.Info("calling function", "name", gf.name, "module", gf.Name, "params", params)
 	}
 
 	// TODO: Use CallWithStack
-	res, err = gf.fn.Call(gf.ctx, params...)
+	res, err := gf.fn.Call(gf.ctx, params...)
 	if err != nil {
+		err = errors.Join(errors.New("can't call guest function"), err)
 		gf.log.Error(err.Error())
-		return
+		return nil, err
 	}
 
-	return
+	return res, nil
 }
 
 // Memory retrieves a Memory instance associated with the wazeroModule.
@@ -106,7 +114,7 @@ type wazeroMemory struct {
 // Returns the offset, size, read data, and any potential error like if out of range.
 // Packed data is a uint64 where the first 32 bits represent the offset
 // and the following 32 bits represent the size of the actual data to be read.
-func (r *wazeroMemory) Read(packedData uint64) (uint32, uint32, []byte, error) {
+func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, []byte, error) {
 
 	var err error
 
@@ -114,10 +122,11 @@ func (r *wazeroMemory) Read(packedData uint64) (uint32, uint32, []byte, error) {
 	offset, size := mdk.UnpackUI64(packedData)
 
 	// Read data from memory using the extracted offset and size.
-	buf, ok := r.mod.Memory().Read(offset, size)
+	buf, ok := m.mod.Memory().Read(offset, size)
 
 	if !ok {
-		err = fmt.Errorf("Memory.Read(%d, %d) out of range of memory size %d", offset, size, r.Size())
+		err = fmt.Errorf("Memory.Read(%d, %d) out of range of memory size %d", offset, size, m.Size())
+		m.log.Error(err.Error())
 		return 0, 0, nil, err
 	}
 
@@ -125,13 +134,15 @@ func (r *wazeroMemory) Read(packedData uint64) (uint32, uint32, []byte, error) {
 }
 
 // Write writes the slice to the underlying buffer at the offset or returns error if out of range.
-func (r *wazeroMemory) Write(offset uint32, v []byte) (err error) {
-	ok := r.mod.Memory().Write(offset, v)
+func (m *wazeroMemory) Write(offset uint32, v []byte) error {
+	ok := m.mod.Memory().Write(offset, v)
 	if !ok {
-		err = fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d", offset, len(v), r.Size())
+		err := fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d", offset, len(v), m.Size())
+		m.log.Error(err.Error())
+		return err
 	}
 
-	return
+	return nil
 }
 
 // Size returns the size in bytes available. e.g. If the underlying memory
@@ -165,10 +176,11 @@ func (r *wazeroMemory) Size() uint32 {
 // fmt.Println("DATA: ", string(data))
 //
 // Note: Always make sure to free memory after allocation.
-func (r *wazeroMemory) Malloc(size uint32) (uint32, error) {
+func (m *wazeroMemory) Malloc(size uint32) (uint32, error) {
 
-	mallocRes, err := r.wazeroModule.GuestFunction(r.wazeroModule.ctx, "malloc").Invoke(uint64(size))
+	mallocRes, err := m.wazeroModule.GuestFunction(m.wazeroModule.ctx, "malloc").Invoke(uint64(size))
 	if err != nil {
+		err = errors.Join(fmt.Errorf("can't invoke malloc function "), err)
 		return 0, err
 	}
 	offset := uint32(mallocRes[0])
@@ -181,16 +193,16 @@ func (r *wazeroMemory) Malloc(size uint32) (uint32, error) {
 // Returns any encountered error during the memory deallocation.
 //
 // In most cases, parameter `offset` is the value returned from Malloc func.
-func (r *wazeroMemory) Free(offset uint32) (err error) {
+func (m *wazeroMemory) Free(offset uint32) error {
 
-	free := r.wazeroModule.GuestFunction(r.ModuleConfig.ctx, "free")
-	_, err = free.Invoke(uint64(offset))
+	_, err := m.wazeroModule.GuestFunction(m.ModuleConfig.ctx, "free").Invoke(uint64(offset))
 
 	if err != nil {
-		return
+		err = errors.Join(fmt.Errorf("can't invoke free function"), err)
+		return err
 	}
 
-	return
+	return err
 }
 
 // wazeroModuleProxy is a proxy structure for wazeroModule.

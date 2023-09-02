@@ -34,11 +34,12 @@ type Memory interface {
 }
 
 type ModuleConfig struct {
-	ctx           context.Context
 	Name          string
 	Wasm          Wasm
+	Attributes    map[string]string
 	HostFunctions []HostFunction
 	LogSeverity   LogSeverity
+	ctx           context.Context
 	log           *slog.Logger
 }
 type Wasm struct {

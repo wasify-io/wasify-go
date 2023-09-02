@@ -70,8 +70,7 @@ func calculateHash(data []byte) (hash string, err error) {
 		return "", err
 	}
 
-	hashValue := hasher.Sum(nil)
-	return hex.EncodeToString(hashValue), nil
+	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
 
 // The `ConstantTimeCompare` function is used here to securely compare two hash values.

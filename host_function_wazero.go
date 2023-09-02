@@ -63,7 +63,7 @@ func wazeroHostFunctionCallback(wazeroModule *wazeroModule, moduleConfig *Module
 		params, err := hf.convertParamsToStruct(ctx, moduleProxy, stack)
 		if err != nil {
 			moduleConfig.log.Error(err.Error(), "func", hf.Name, "module", wazeroModule.Name)
-			// panic(err)
+			panic(err)
 		}
 
 		// user defined host function callback
@@ -73,13 +73,13 @@ func wazeroHostFunctionCallback(wazeroModule *wazeroModule, moduleConfig *Module
 		_, returnOffsets, err := hf.writeResultsToMemory(ctx, moduleProxy, returnValues, stack)
 		if err != nil {
 			moduleConfig.log.Error(err.Error(), "func", hf.Name, "module", wazeroModule.Name)
-			// panic(err)
+			panic(err)
 		}
 
 		err = hf.cleanup(moduleProxy, params, returnOffsets)
 		if err != nil {
 			moduleConfig.log.Error(err.Error(), "func", hf.Name, "module", wazeroModule.Name)
-			// panic(err)
+			panic(err)
 		}
 	}
 }
