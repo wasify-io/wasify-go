@@ -35,9 +35,12 @@ func (rt RuntimeType) String() (runtimeName string) {
 
 // The RuntimeConfig struct holds configuration settings for a runtime.
 type RuntimeConfig struct {
-	Runtime     RuntimeType  // Specifies the type of runtime being used.
-	LogSeverity LogSeverity  // Determines the severity level of logging.
-	log         *slog.Logger // Pointer to a logger for recording runtime information.
+	// Specifies the type of runtime being used.
+	Runtime RuntimeType
+	// Determines the severity level of logging.
+	LogSeverity LogSeverity
+	// Pointer to a logger for recording runtime information.
+	log *slog.Logger
 }
 
 // NewRuntime creates and initializes a new runtime based on the provided configuration.

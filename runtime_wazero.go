@@ -4,6 +4,7 @@ package wasify
 
 import (
 	"context"
+	"errors"
 	"os"
 
 	"github.com/tetratelabs/wazero"
@@ -44,13 +45,15 @@ func (r *wazeroRuntime) NewModule(ctx context.Context, moduleConfig *ModuleConfi
 	if moduleConfig.Wasm.Hash != "" {
 		actualHash, err := calculateHash(moduleConfig.Wasm.Binary)
 		if err != nil {
+			err = errors.Join(errors.New("can't calculate the hash"), err)
+			moduleConfig.log.Warn(err.Error(), "module", moduleConfig.Name, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
 			return nil, err
 		}
 		moduleConfig.log.Info("hash calculation", "module", moduleConfig.Name, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
 
 		err = compareHashes(actualHash, moduleConfig.Wasm.Hash)
 		if err != nil {
-			moduleConfig.log.Warn("the hashes are not equal", "module", moduleConfig.Name, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
+			moduleConfig.log.Warn(err.Error(), "module", moduleConfig.Name, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
 			return nil, err
 		}
 	}
@@ -59,15 +62,21 @@ func (r *wazeroRuntime) NewModule(ctx context.Context, moduleConfig *ModuleConfi
 	err := r.instantiateHostFunctions(ctx, wazeroModule, moduleConfig)
 	if err != nil {
 		moduleConfig.log.Error(err.Error(), "module", moduleConfig.Name)
+		r.log.Error(err.Error(), "runtime", r.runtime, "module")
 		return nil, err
 	}
+
+	moduleConfig.log.Info("host functions has been instantiated successfully", "module", moduleConfig.Name)
 
 	// Instantiate the module and set it in wazeroModule.
 	mod, err := r.instantiateModule(ctx, moduleConfig)
 	if err != nil {
 		moduleConfig.log.Error(err.Error(), "module", moduleConfig.Name)
+		r.log.Error(err.Error(), "runtime", r.runtime, "module")
 		return nil, err
 	}
+
+	moduleConfig.log.Info("module has been instantiated successfully", "module", moduleConfig.Name)
 
 	wazeroModule.mod = mod
 
@@ -103,7 +112,7 @@ func (r *wazeroRuntime) convertToAPIValueTypes(types []ValueType) []api.ValueTyp
 // instantiateHostFunctions sets up and exports host functions for the module using the wazero runtime.
 //
 // It configures host function callbacks, value types, and exports.
-func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModule *wazeroModule, moduleConfig *ModuleConfig) (err error) {
+func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModule *wazeroModule, moduleConfig *ModuleConfig) error {
 
 	modBuilder := r.runtime.NewHostModuleBuilder(moduleConfig.Name)
 
@@ -131,14 +140,13 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 			Export(hf.Name)
 	}
 
-	_, err = modBuilder.Instantiate(ctx)
+	_, err := modBuilder.Instantiate(ctx)
 	if err != nil {
-		return
+		err = errors.Join(errors.New("can't instantiate NewHostModuleBuilder"), err)
+		return err
 	}
 
-	moduleConfig.log.Info("host functions has been instantiated successfully", "module", moduleConfig.Name)
-
-	return
+	return nil
 
 }
 
@@ -146,31 +154,26 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 //
 // It compiles the module, creates a module configuration, and then instantiates the module.
 // Returns the instantiated module and any potential error.
-func (r *wazeroRuntime) instantiateModule(ctx context.Context, moduleConfig *ModuleConfig) (mod api.Module, err error) {
-
-	r.log.Debug("starting module instantiation", "module", moduleConfig.Name, "hash", moduleConfig.Wasm.Hash)
+func (r *wazeroRuntime) instantiateModule(ctx context.Context, moduleConfig *ModuleConfig) (api.Module, error) {
 
 	// Compile the provided WebAssembly binary.
 	compiled, err := r.runtime.CompileModule(ctx, moduleConfig.Wasm.Binary)
 	if err != nil {
-		return
+		return nil, errors.Join(errors.New("can't compile module"), err)
 	}
 
 	// FIXME: The following lines configure the module's standard output and error streams.
 	// These lines are added for simple debugging and should be removed to ensure sandboxing.
+	// REMOVE LATER.
 	cfg := wazero.NewModuleConfig().WithStdout(os.Stdout).WithStderr(os.Stderr)
-	// Use the following line for production without debugging:
-	// cfg := wazero.NewModuleConfig()
 
 	// Instantiate the compiled module with the provided module configuration.
-	mod, err = r.runtime.InstantiateModule(ctx, compiled, cfg)
+	mod, err := r.runtime.InstantiateModule(ctx, compiled, cfg)
 	if err != nil {
-		return
+		return nil, errors.Join(errors.New("can't instantiate module"), err)
 	}
 
-	moduleConfig.log.Info("module has been instantiated successfully", "module", moduleConfig.Name)
-
-	return
+	return mod, nil
 }
 
 // Close closes the resource.
@@ -178,12 +181,13 @@ func (r *wazeroRuntime) instantiateModule(ctx context.Context, moduleConfig *Mod
 // Note: The context parameter is used for value lookup, such as for
 // logging. A canceled or otherwise done context will not prevent Close
 // from succeeding.
-func (r *wazeroRuntime) Close(ctx context.Context) (err error) {
-	err = r.runtime.Close(ctx)
+func (r *wazeroRuntime) Close(ctx context.Context) error {
+	err := r.runtime.Close(ctx)
 	if err != nil {
+		err = errors.Join(errors.New("can't close runtime"), err)
 		r.log.Error(err.Error(), "module", r.runtime)
-		return
+		return err
 	}
 
-	return
+	return nil
 }
