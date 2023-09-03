@@ -79,3 +79,12 @@ type FSConfig struct {
 	// The directory accessible to the WASI module.
 	GuestDir string
 }
+
+func (fs *FSConfig) getGuestDir() string {
+
+	if fs.GuestDir == "" {
+		return "/"
+	}
+
+	return fs.GuestDir
+}

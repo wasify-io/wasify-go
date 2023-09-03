@@ -189,7 +189,7 @@ func (r *wazeroRuntime) instantiateModule(ctx context.Context, moduleConfig *Mod
 	if moduleConfig != nil && moduleConfig.FSConfig.Enabled {
 		cfg = cfg.WithFSConfig(
 			wazero.NewFSConfig().
-				WithDirMount(moduleConfig.FSConfig.HostDir, moduleConfig.FSConfig.GuestDir),
+				WithDirMount(moduleConfig.FSConfig.HostDir, moduleConfig.FSConfig.getGuestDir()),
 		)
 	}
 
