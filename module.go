@@ -34,15 +34,48 @@ type Memory interface {
 }
 
 type ModuleConfig struct {
-	Name          string
-	Wasm          Wasm
-	Attributes    map[string]string
+	// Module name. Required.
+	Name string
+
+	// FSConfig configures a directory to be pre-opened for access by the WASI module if Enabled is set to true.
+	// If GuestDir is not provided, the default guest directory will be "/".
+	// Note: If FSConfig is not provided or Enabled is false, the directory will not be attached to WASI.
+	FSConfig FSConfig
+
+	// WASM configuration. Required.
+	Wasm Wasm
+
+	// List of host functions to be registered.
 	HostFunctions []HostFunction
-	LogSeverity   LogSeverity
-	ctx           context.Context
-	log           *slog.Logger
+
+	// Set the severity level for a particular module's logs.
+	// Note: If LogSeverity isn't specified, the severity is inherited from the parent, like the runtime log severity.
+	LogSeverity LogSeverity
+
+	// Struct members for internal use.
+	ctx context.Context
+	log *slog.Logger
 }
+
+// Wasm configures a new wasm file.
+// Binay is required.
+// Hash is optional.
 type Wasm struct {
-	Hash   string
 	Binary []byte
+	Hash   string
+}
+
+// FSConfig configures a directory to be pre-opened for access by the WASI module if Enabled is set to true.
+// If GuestDir is not provided, the default guest directory will be "/".
+// Note: If FSConfig is not provided or Enabled is false, the directory will not be attached to WASI.
+type FSConfig struct {
+	// Whether to Enabled the directory for WASI access.
+	Enabled bool
+
+	// The directory on the host system.
+	// Default: "/"
+	HostDir string
+
+	// The directory accessible to the WASI module.
+	GuestDir string
 }
