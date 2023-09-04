@@ -2,7 +2,6 @@ package wasify
 
 import (
 	"context"
-	"fmt"
 )
 
 const MDK_ENV = "wasify"
@@ -24,12 +23,24 @@ func (hf *hostFunctions) newLog() *HostFunction {
 		Name: "log",
 		Callback: func(ctx context.Context, m ModuleProxy, params Params) *Results {
 
-			fmt.Println(string(params[0].Value))
+			msg := string(params[0].Value)
+			lvl := LogSeverity(params[1].Value[0] - '0')
+
+			switch lvl {
+			case LogDebug:
+				hf.moduleConfig.log.Debug(msg)
+			case LogInfo:
+				hf.moduleConfig.log.Info(msg)
+			case LogWarning:
+				hf.moduleConfig.log.Warn(msg)
+			case LogError:
+				hf.moduleConfig.log.Error(msg)
+			}
 
 			return nil
 
 		},
-		Params:  []ValueType{ValueTypeByte},
+		Params:  []ValueType{ValueTypeByte, ValueTypeByte},
 		Returns: []ValueType{},
 
 		// required fields
