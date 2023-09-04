@@ -18,7 +18,7 @@ type ModuleProxy interface {
 	Free(offset uint32) error
 	Malloc(size uint32) (offset uint32, err error)
 	Size() uint32
-	Return(...Result) Results
+	Return(...Result) *Results
 }
 
 type GuestFunction interface {

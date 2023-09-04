@@ -5,7 +5,6 @@ package wasify
 import (
 	"context"
 	"errors"
-	"os"
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
@@ -82,7 +81,7 @@ func (r *wazeroRuntime) NewModule(ctx context.Context, moduleConfig *ModuleConfi
 	err := r.instantiateHostFunctions(ctx, wazeroModule, moduleConfig)
 	if err != nil {
 		moduleConfig.log.Error(err.Error(), "module", moduleConfig.Name)
-		r.log.Error(err.Error(), "runtime", r.runtime, "module")
+		r.log.Error(err.Error(), "runtime", r.Runtime, "module", moduleConfig.Name)
 		return nil, err
 	}
 
@@ -92,7 +91,7 @@ func (r *wazeroRuntime) NewModule(ctx context.Context, moduleConfig *ModuleConfi
 	mod, err := r.instantiateModule(ctx, moduleConfig)
 	if err != nil {
 		moduleConfig.log.Error(err.Error(), "module", moduleConfig.Name)
-		r.log.Error(err.Error(), "runtime", r.runtime, "module")
+		r.log.Error(err.Error(), "runtime", r.Runtime, "module", moduleConfig.Name)
 		return nil, err
 	}
 
@@ -160,9 +159,34 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 			Export(hf.Name)
 	}
 
+	// Instantiate user defined host functions
 	_, err := modBuilder.Instantiate(ctx)
 	if err != nil {
-		err = errors.Join(errors.New("can't instantiate NewHostModuleBuilder"), err)
+		err = errors.Join(errors.New("can't instantiate NewHostModuleBuilder [user-defined host funcs]"), err)
+		return err
+	}
+
+	// NewHostModuleBuilder for wasify pre-defined host functions
+	modBuilder = r.runtime.NewHostModuleBuilder(MDK_ENV)
+
+	// initialize pre-defined host functions and pass any necessary configurations
+	hf := newHostFunctions(moduleConfig)
+
+	// register pre-defined host functions
+	log := hf.newLog()
+
+	// host logger
+	modBuilder.
+		NewFunctionBuilder().
+		WithGoModuleFunction(api.GoModuleFunc(wazeroHostFunctionCallback(wazeroModule, moduleConfig, log)),
+			r.convertToAPIValueTypes(log.Params),
+			r.convertToAPIValueTypes(log.Returns),
+		).
+		Export(log.Name)
+
+	_, err = modBuilder.Instantiate(ctx)
+	if err != nil {
+		err = errors.Join(errors.New("can't instantiate wasify NewHostModuleBuilder [pre-defined host funcs]"), err)
 		return err
 	}
 
@@ -182,9 +206,8 @@ func (r *wazeroRuntime) instantiateModule(ctx context.Context, moduleConfig *Mod
 		return nil, errors.Join(errors.New("can't compile module"), err)
 	}
 
-	cfg := wazero.NewModuleConfig().
-		// FIXME: The following line are added for simple debugging and should be removed to ensure sandboxing.
-		WithStdout(os.Stdout).WithStderr(os.Stderr) // REMOVE LATER.
+	// TODO: Add more configurations
+	cfg := wazero.NewModuleConfig()
 
 	if moduleConfig != nil && moduleConfig.FSConfig.Enabled {
 		cfg = cfg.WithFSConfig(
@@ -211,7 +234,7 @@ func (r *wazeroRuntime) Close(ctx context.Context) error {
 	err := r.runtime.Close(ctx)
 	if err != nil {
 		err = errors.Join(errors.New("can't close runtime"), err)
-		r.log.Error(err.Error(), "module", r.runtime)
+		r.log.Error(err.Error(), "runtime", r.Runtime)
 		return err
 	}
 

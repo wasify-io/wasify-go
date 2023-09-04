@@ -44,6 +44,7 @@ func main() {
         Name: "myEnv",
         Wasm: wasify.Wasm{
             Binary: moduleData,
+            Hash: "[HASH]", // optional, can be removed.
         },
         HostFunctions: []wasify.HostFunction{
             {
@@ -98,7 +99,7 @@ func _greet() {
     results := mdk.Results(resultOffset)
 
     for i, result := range results {
-        fmt.Printf("Guest func result %d: %s\r\n", i, string(result.Data))
+        mdk.Log("Guest func result %d: %s\r\n", i, string(result.Data))
     }
 }
 ```

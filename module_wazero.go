@@ -231,10 +231,10 @@ func (mp *wazeroModuleProxy) Free(offset uint32) error {
 //		},
 //		Returns: []wasify.ValueType{wasify.ValueTypeByte, wasify.ValueTypeByte},
 //	},
-func (mp *wazeroModuleProxy) Return(args ...Result) Results {
+func (mp *wazeroModuleProxy) Return(args ...Result) *Results {
 	returns := make(Results, len(args))
 	for i, arg := range args {
 		returns[i] = arg
 	}
-	return returns
+	return &returns
 }
