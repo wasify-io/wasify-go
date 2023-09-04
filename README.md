@@ -81,11 +81,7 @@ In `module/example.go`, a host function `hostLog` is defined and a guest functio
 ```go
 package main
 
-import (
-    "fmt"
-
-    "github.com/wasify-io/wasify-go/mdk"
-)
+import "github.com/wasify-io/wasify-go/mdk"
 
 func main() {}
 
