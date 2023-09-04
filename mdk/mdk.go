@@ -36,7 +36,7 @@ func Arg(data any) ArgOffset {
 		panic("unsupported data type")
 	}
 
-	runtime.KeepAlive(data)
+	runtime.KeepAlive(b)
 
 	return ArgOffset(Alloc(b))
 }

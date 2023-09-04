@@ -7,36 +7,32 @@ import (
 
 // hostFunctions is a list of pre-defined host functions
 type hostFunctions struct {
-	hostFunctions *[]*HostFunction
+	moduleConfig *ModuleConfig
 }
 
-func newHostFunctions() *hostFunctions {
-
-	return &hostFunctions{}
+func newHostFunctions(moduleConfig *ModuleConfig) *hostFunctions {
+	return &hostFunctions{moduleConfig}
 }
 
 // log data from the guest module to the host machine to avoid stdin/stdout calls,
 // to ensure sandboxing.
-func (hf *hostFunctions) log() *HostFunction {
+func (hf *hostFunctions) newLog() *HostFunction {
 
 	log := &HostFunction{
 		Name: "log",
 		Callback: func(ctx context.Context, m ModuleProxy, params Params) *Results {
 
-			fmt.Println("Host func param 0: ", string(params[0].Value))
-			fmt.Println("Host func param 1: ", string(params[1].Value))
+			fmt.Println(string(params[0].Value))
 
-			a := m.Return(
-				[]byte("Hello"),
-				[]byte("There!"),
-			)
-
-			return a
+			return nil
 
 		},
 		Params:  []ValueType{ValueTypeByte},
 		Returns: []ValueType{},
 	}
+
+	log.moduleConfig = hf.moduleConfig
+	log.allocationMap = newAllocationMap[uint32, uint32]()
 
 	return log
 }

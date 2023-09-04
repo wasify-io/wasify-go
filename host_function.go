@@ -156,6 +156,10 @@ func (hf *HostFunction) convertParamsToStruct(ctx context.Context, m ModuleProxy
 // |                                                     |
 // +-----------------------------------------------------+
 func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy, results *Results, stackParams []uint64) ([]uint64, map[uint32]uint32, error) {
+	if results == nil {
+		return nil, nil, nil
+	}
+
 	if len(*results) != len(hf.Returns) {
 		return nil, nil, fmt.Errorf("results mismatch. expected: %d returned: %d", len(hf.Returns), len(*results))
 	}
