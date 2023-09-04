@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+const MDK_ENV = "wasify"
+
 // hostFunctions is a list of pre-defined host functions
 type hostFunctions struct {
 	moduleConfig *ModuleConfig

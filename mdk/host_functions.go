@@ -2,7 +2,7 @@ package mdk
 
 import "fmt"
 
-//go:wasmimport myEnv log
+//go:wasmimport wasify log
 func log(ArgOffset)
 
 func Log(format string, a ...any) {

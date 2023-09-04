@@ -159,6 +159,17 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 			).
 			Export(hf.Name)
 	}
+
+	// Instantiate user defined host functions
+	_, err := modBuilder.Instantiate(ctx)
+	if err != nil {
+		err = errors.Join(errors.New("can't instantiate NewHostModuleBuilder [user-defined host funcs]"), err)
+		return err
+	}
+
+	// NewHostModuleBuilder for wasify pre-defined host functions
+	modBuilder = r.runtime.NewHostModuleBuilder(MDK_ENV)
+
 	// initialize pre-defined host functions and pass any necessary configurations
 	hf := newHostFunctions(moduleConfig)
 
@@ -174,10 +185,9 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 		).
 		Export(log.Name)
 
-	// Instantiate host functions
-	_, err := modBuilder.Instantiate(ctx)
+	_, err = modBuilder.Instantiate(ctx)
 	if err != nil {
-		err = errors.Join(errors.New("can't instantiate NewHostModuleBuilder"), err)
+		err = errors.Join(errors.New("can't instantiate wasify NewHostModuleBuilder [pre-defined host funcs]"), err)
 		return err
 	}
 
