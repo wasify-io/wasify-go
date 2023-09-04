@@ -29,10 +29,11 @@ func (hf *hostFunctions) newLog() *HostFunction {
 		},
 		Params:  []ValueType{ValueTypeByte},
 		Returns: []ValueType{},
-	}
 
-	log.moduleConfig = hf.moduleConfig
-	log.allocationMap = newAllocationMap[uint32, uint32]()
+		// required fields
+		moduleConfig:  hf.moduleConfig,
+		allocationMap: newAllocationMap[uint32, uint32](),
+	}
 
 	return log
 }

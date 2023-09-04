@@ -165,6 +165,7 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 	// register pre-defined host functions
 	log := hf.newLog()
 
+	// host logger
 	modBuilder.
 		NewFunctionBuilder().
 		WithGoModuleFunction(api.GoModuleFunc(wazeroHostFunctionCallback(wazeroModule, moduleConfig, log)),
