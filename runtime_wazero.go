@@ -160,6 +160,14 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 			Export(hf.Name)
 	}
 
+	// modBuilder.
+	// 	NewFunctionBuilder().
+	// 	WithGoModuleFunction(api.GoModuleFunc(wazeroHostFunctionCallback(wazeroModule, moduleConfig, &log)),
+	// 		r.convertToAPIValueTypes(log.Params),
+	// 		r.convertToAPIValueTypes([]ValueType{ValueTypeByte}),
+	// 	).
+	// 	Export(log.Name)
+
 	_, err := modBuilder.Instantiate(ctx)
 	if err != nil {
 		err = errors.Join(errors.New("can't instantiate NewHostModuleBuilder"), err)

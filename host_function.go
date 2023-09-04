@@ -69,7 +69,7 @@ type HostFunction struct {
 //
 // HostFunctionCallback encapsulates the runtime's internal implementation details.
 // It serves as an intermediary invoked between the processing of function parameters and the final return of the function.
-type HostFunctionCallback func(ctx context.Context, moduleProxy ModuleProxy, stackParams Params) Results
+type HostFunctionCallback func(ctx context.Context, moduleProxy ModuleProxy, stackParams Params) *Results
 
 // convertParamsToStruct converts the packed stack parameters to a structured format.
 // It uses the ModuleProxy instance to read data for each parameter from memory,
@@ -155,18 +155,18 @@ func (hf *HostFunction) convertParamsToStruct(ctx context.Context, m ModuleProxy
 // | Read packedData slice, unpack, and extract data     |
 // |                                                     |
 // +-----------------------------------------------------+
-func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy, results Results, stackParams []uint64) ([]uint64, map[uint32]uint32, error) {
-	if len(results) != len(hf.Returns) {
-		return nil, nil, fmt.Errorf("results mismatch. expected: %d returned: %d", len(hf.Returns), len(results))
+func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy, results *Results, stackParams []uint64) ([]uint64, map[uint32]uint32, error) {
+	if len(*results) != len(hf.Returns) {
+		return nil, nil, fmt.Errorf("results mismatch. expected: %d returned: %d", len(hf.Returns), len(*results))
 	}
 
 	// First, allocate memory for each byte slice and store the offsets in a slice
-	packedDatas := make([]uint64, len(results))
+	packedDatas := make([]uint64, len(*results))
 
 	// +1 len because for the offset which holds all offsets
-	returnOffsets := make(map[uint32]uint32, len(results)+1)
+	returnOffsets := make(map[uint32]uint32, len(*results)+1)
 
-	for i, returnValue := range results {
+	for i, returnValue := range *results {
 		offsetSize := uint32(len(returnValue))
 		offset, err := m.Malloc(offsetSize)
 		if err != nil {
