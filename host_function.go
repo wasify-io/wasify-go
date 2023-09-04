@@ -160,7 +160,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 		return nil, nil, fmt.Errorf("results mismatch. expected: %d returned: %d", len(hf.Returns), len(results))
 	}
 
-	// first, allocate memory for each byte slice and store the offsets in a slice
+	// First, allocate memory for each byte slice and store the offsets in a slice
 	packedDatas := make([]uint64, len(results))
 
 	// +1 len because for the offset which holds all offsets
@@ -175,7 +175,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 		}
 
 		returnOffsets[offset] = offsetSize
-		// add offset and offset size in the hsot function's allocationMap
+		// Add offset and offset size in the hsot function's allocationMap
 		// for later cleanup.
 		hf.allocationMap.store(offset, offsetSize)
 
@@ -189,7 +189,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 		packedDatas[i] = mdk.PackUI64(offset, offsetSize)
 	}
 
-	// then, allocate memory for the array of packed offsets and sizes
+	// Then, allocate memory for the array of packed offsets and sizes
 	offsetSize := uint32(len(packedDatas) * 8)
 	offset, err := m.Malloc(offsetSize)
 	if err != nil {
@@ -198,7 +198,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	}
 
 	returnOffsets[offset] = offsetSize
-	// add offset and offset size in the hsot function's allocationMap
+	// Add offset and offset size in the hsot function's allocationMap
 	// for later cleanup.
 	hf.allocationMap.store(offset, offsetSize)
 
@@ -208,10 +208,13 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 		return nil, nil, err
 	}
 
+	// Final packed data, which contains offset and size of packedDatas slice
 	packedData := mdk.PackUI64(offset, offsetSize)
 
+	// Store final packedData into linear memory
 	stackParams[0] = packedData
 
+	// Append final packedData to existing packedDatas slice for later cleanup
 	packedDatas = append(packedDatas, packedData)
 
 	return packedDatas, returnOffsets, nil

@@ -5,27 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/wasify-io/wasify-go/mdk"
 )
-
-// getWazeroRuntime creates and returns a wazero runtime instance using the provided context and
-// RuntimeConfig. It configures the runtime with specific settings and features.
-func getWazeroRuntime(ctx context.Context, c *RuntimeConfig) *wazeroRuntime {
-	// TODO: Add explanation of runtime setup and configuration.
-	// Create a new wazero runtime instance with specified configuration options.
-	runtime := wazero.NewRuntimeWithConfig(ctx, wazero.NewRuntimeConfig().
-		WithCustomSections(true).
-		WithCloseOnContextDone(true).
-		WithCoreFeatures(api.CoreFeaturesV2).
-		WithDebugInfoEnabled(true),
-	)
-	// Instantiate the runtime with the WASI snapshot preview1.
-	wasi_snapshot_preview1.MustInstantiate(ctx, runtime)
-	return &wazeroRuntime{runtime, c}
-}
 
 // The wazeroModule struct combines an instantiated wazero modul
 // with the generic module configuration.

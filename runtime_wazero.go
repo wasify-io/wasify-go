@@ -9,7 +9,27 @@ import (
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
+
+// getWazeroRuntime creates and returns a wazero runtime instance using the provided context and
+// RuntimeConfig. It configures the runtime with specific settings and features.
+func getWazeroRuntime(ctx context.Context, c *RuntimeConfig) *wazeroRuntime {
+	// TODO: Allow user to control the following options:
+	// 1. WithCloseOnContextDone
+	// 2. Memory
+	// Create a new wazero runtime instance with specified configuration options.
+	runtime := wazero.NewRuntimeWithConfig(ctx, wazero.NewRuntimeConfig().
+		WithCoreFeatures(api.CoreFeaturesV2).
+		WithCustomSections(false).
+		WithCloseOnContextDone(false).
+		// Enable runtime debug if user sets LogSeverity to debug level in runtime configuration
+		WithDebugInfoEnabled(c.LogSeverity == LogDebug),
+	)
+	// Instantiate the runtime with the WASI snapshot preview1.
+	wasi_snapshot_preview1.MustInstantiate(ctx, runtime)
+	return &wazeroRuntime{runtime, c}
+}
 
 // The wazeroRuntime struct combines a wazero runtime instance with runtime configuration.
 type wazeroRuntime struct {
@@ -162,10 +182,16 @@ func (r *wazeroRuntime) instantiateModule(ctx context.Context, moduleConfig *Mod
 		return nil, errors.Join(errors.New("can't compile module"), err)
 	}
 
-	// FIXME: The following lines configure the module's standard output and error streams.
-	// These lines are added for simple debugging and should be removed to ensure sandboxing.
-	// REMOVE LATER.
-	cfg := wazero.NewModuleConfig().WithStdout(os.Stdout).WithStderr(os.Stderr)
+	cfg := wazero.NewModuleConfig().
+		// FIXME: The following line are added for simple debugging and should be removed to ensure sandboxing.
+		WithStdout(os.Stdout).WithStderr(os.Stderr) // REMOVE LATER.
+
+	if moduleConfig != nil && moduleConfig.FSConfig.Enabled {
+		cfg = cfg.WithFSConfig(
+			wazero.NewFSConfig().
+				WithDirMount(moduleConfig.FSConfig.HostDir, moduleConfig.FSConfig.getGuestDir()),
+		)
+	}
 
 	// Instantiate the compiled module with the provided module configuration.
 	mod, err := r.runtime.InstantiateModule(ctx, compiled, cfg)
