@@ -40,7 +40,7 @@ func (hf *hostFunctions) newLog() *HostFunction {
 			return nil
 
 		},
-		Params:  []ValueType{ValueTypeByte, ValueTypeByte},
+		Params:  []ValueType{ValueTypeBytes, ValueTypeBytes},
 		Returns: []ValueType{},
 
 		// required fields

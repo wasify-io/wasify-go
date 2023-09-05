@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/wasify-io/wasify-go/mdk"
 )
@@ -13,12 +14,13 @@ type ValueType uint8
 
 // Currently only supported type is byte.
 // bytes used for communication betwen host and guest.
+const valueTypePack uint8 = 0
 const (
-	ValueTypeByte ValueType = iota
-	// ValueTypeI32
-	// ValueTypeI64
-	// ValueTypeF32
-	// ValueTypeF64
+	ValueTypeBytes ValueType = iota + 1
+	ValueTypeI32
+	ValueTypeI64
+	ValueTypeF32
+	ValueTypeF64
 )
 
 // Param defines the attributes of a function parameter.
@@ -35,8 +37,8 @@ type Param struct {
 type Params []Param
 
 // ReturnValue represents the value returned from a function.
-type Result []byte
-type Results [][]byte
+type Result any
+type Results []Result
 
 // HostFunction defines a host function that can be invoked from a guest module.
 type HostFunction struct {
@@ -160,10 +162,6 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 		return nil, nil, nil
 	}
 
-	if len(*results) != len(hf.Returns) {
-		return nil, nil, fmt.Errorf("results mismatch. expected: %d returned: %d", len(hf.Returns), len(*results))
-	}
-
 	// First, allocate memory for each byte slice and store the offsets in a slice
 	packedDatas := make([]uint64, len(*results))
 
@@ -171,7 +169,15 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	returnOffsets := make(map[uint32]uint32, len(*results)+1)
 
 	for i, returnValue := range *results {
-		offsetSize := uint32(len(returnValue))
+
+		// get offset size and result value type (ValueType) by result's returnValue
+		offsetSize, dataType, err := getOffsetSizeAndValueTypeByConversion(returnValue)
+		if err != nil {
+			err = errors.Join(errors.New("can't convert result"), err)
+			return nil, nil, err
+		}
+
+		// allocate memory for each value
 		offset, err := m.Malloc(offsetSize)
 		if err != nil {
 			err = errors.Join(errors.New("can't allocate memory for return value"), err)
@@ -190,7 +196,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 		}
 
 		// pack the offset and size into a single uint64
-		packedDatas[i] = mdk.PackUI64(offset, offsetSize)
+		packedDatas[i] = mdk.PackUI64(uint8(dataType), offset, offsetSize)
 	}
 
 	// Then, allocate memory for the array of packed offsets and sizes
@@ -213,7 +219,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	}
 
 	// Final packed data, which contains offset and size of packedDatas slice
-	packedData := mdk.PackUI64(offset, offsetSize)
+	packedData := mdk.PackUI64(valueTypePack, offset, offsetSize)
 
 	// Store final packedData into linear memory
 	stackParams[0] = packedData
@@ -258,11 +264,39 @@ func (hf *HostFunction) cleanup(m ModuleProxy, params Params, returnOffsets map[
 	}
 
 	hf.moduleConfig.log.Debug(
-		"cleanup: host func param and returns",
+		"cleanup: host func params and returns",
 		"total_bytes", totalSize,
 		"available_bytes", hf.allocationMap.totalSize(),
 		"func", hf.Name,
 		"module", hf.moduleConfig.Name)
 
 	return nil
+}
+
+// getOffsetSizeAndValueTypeByConversion determines the memory size (offsetSize) and ValueType
+// of a given returnValue. The function supports several data types.
+func getOffsetSizeAndValueTypeByConversion(returnValue any) (offsetSize uint32, dataType ValueType, err error) {
+
+	switch vTyped := returnValue.(type) {
+	case []byte:
+		offsetSize = uint32(len(vTyped))
+		dataType = ValueTypeBytes
+	case uint32:
+		offsetSize = 4
+		dataType = ValueTypeI32
+	case uint64:
+		offsetSize = 4
+		dataType = ValueTypeI64
+	case float32:
+		offsetSize = 4
+		dataType = ValueTypeF32
+	case float64:
+		offsetSize = 4
+		dataType = ValueTypeF64
+	default:
+		err = fmt.Errorf("unsupported value type %s", reflect.TypeOf(returnValue))
+		return
+	}
+
+	return offsetSize, dataType, err
 }

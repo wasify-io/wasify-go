@@ -5,6 +5,7 @@ package wasify
 import (
 	"context"
 	"errors"
+	"os"
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
@@ -110,18 +111,14 @@ func (r *wazeroRuntime) NewModule(ctx context.Context, moduleConfig *ModuleConfi
 func (r *wazeroRuntime) convertToAPIValueTypes(types []ValueType) []api.ValueType {
 	valueTypes := make([]api.ValueType, len(types))
 	for i, t := range types {
-
 		switch t {
-		case ValueTypeByte:
+		case
+			ValueTypeBytes,
+			ValueTypeI32,
+			ValueTypeI64,
+			ValueTypeF32,
+			ValueTypeF64:
 			valueTypes[i] = api.ValueTypeI64
-			// case ValueTypeI32:
-			// 	valueTypes[i] = api.ValueTypeI32
-			// case ValueTypeI64:
-			// 	valueTypes[i] = api.ValueTypeI64
-			// case ValueTypeF32:
-			// 	valueTypes[i] = api.ValueTypeF32
-			// case ValueTypeF64:
-			// 	valueTypes[i] = api.ValueTypeF64
 		}
 	}
 
@@ -154,7 +151,7 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 			NewFunctionBuilder().
 			WithGoModuleFunction(api.GoModuleFunc(wazeroHostFunctionCallback(wazeroModule, moduleConfig, &hf)),
 				r.convertToAPIValueTypes(hf.Params),
-				r.convertToAPIValueTypes([]ValueType{ValueTypeByte}),
+				r.convertToAPIValueTypes([]ValueType{ValueTypeBytes}),
 			).
 			Export(hf.Name)
 	}
@@ -208,6 +205,7 @@ func (r *wazeroRuntime) instantiateModule(ctx context.Context, moduleConfig *Mod
 
 	// TODO: Add more configurations
 	cfg := wazero.NewModuleConfig()
+	cfg = cfg.WithStdin(os.Stdin).WithStderr(os.Stderr).WithStdout(os.Stdout)
 
 	if moduleConfig != nil && moduleConfig.FSConfig.Enabled {
 		cfg = cfg.WithFSConfig(

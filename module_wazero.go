@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/tetratelabs/wazero/api"
 	"github.com/wasify-io/wasify-go/mdk"
@@ -101,7 +102,8 @@ func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, []byte, error) {
 	var err error
 
 	// Unpack the packedData to extract offset and size values.
-	offset, size := mdk.UnpackUI64(packedData)
+	// TODO: read by data type
+	_, offset, size := mdk.UnpackUI64(packedData)
 
 	// Read data from memory using the extracted offset and size.
 	buf, ok := m.mod.Memory().Read(offset, size)
@@ -116,10 +118,77 @@ func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, []byte, error) {
 }
 
 // Write writes the slice to the underlying buffer at the offset or returns error if out of range.
-func (m *wazeroMemory) Write(offset uint32, v []byte) error {
+func (m *wazeroMemory) Write(offset uint32, v any) error {
+	var err error
+
+	switch vTyped := v.(type) {
+	case []byte:
+		err = m.WriteBytes(offset, vTyped)
+	case uint32:
+		err = m.WriteUint32Le(offset, vTyped)
+	case uint64:
+		err = m.WriteUint64Le(offset, vTyped)
+	case float32:
+		err = m.WriteFloat32Le(offset, vTyped)
+	case float64:
+		err = m.WriteFloat64Le(offset, vTyped)
+	default:
+		err := fmt.Errorf("unsupported write data type %s", reflect.TypeOf(v))
+		m.log.Error(err.Error())
+		return err
+	}
+
+	return err
+}
+
+func (m *wazeroMemory) WriteBytes(offset uint32, v []byte) error {
 	ok := m.mod.Memory().Write(offset, v)
 	if !ok {
-		err := fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d", offset, len(v), m.Size())
+		err := fmt.Errorf(" Memory.WriteBytes(%d, %d) out of range of memory size %d", offset, len(v), m.Size())
+		m.log.Error(err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (m *wazeroMemory) WriteUint32Le(offset uint32, v uint32) error {
+	ok := m.mod.Memory().WriteUint32Le(offset, v)
+	if !ok {
+		err := fmt.Errorf(" Memory.WriteUint32Le(%d, %d) out of range of memory size %d", offset, 4, m.Size())
+		m.log.Error(err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (m *wazeroMemory) WriteUint64Le(offset uint32, v uint64) error {
+	ok := m.mod.Memory().WriteUint64Le(offset, v)
+	if !ok {
+		err := fmt.Errorf(" Memory.WriteUint64Le(%d, %d) out of range of memory size %d", offset, 8, m.Size())
+		m.log.Error(err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (m *wazeroMemory) WriteFloat32Le(offset uint32, v float32) error {
+	ok := m.mod.Memory().WriteFloat32Le(offset, v)
+	if !ok {
+		err := fmt.Errorf(" Memory.WriteFloat32Le(%d, %d) out of range of memory size %d", offset, 8, m.Size())
+		m.log.Error(err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (m *wazeroMemory) WriteFloat64Le(offset uint32, v float64) error {
+	ok := m.mod.Memory().WriteFloat64Le(offset, v)
+	if !ok {
+		err := fmt.Errorf(" Memory.WriteFloat64Le(%d, %d) out of range of memory size %d", offset, 8, m.Size())
 		m.log.Error(err.Error())
 		return err
 	}
@@ -201,7 +270,7 @@ func (mp *wazeroModuleProxy) GuestFunction(ctx context.Context, name string) Gue
 func (mp *wazeroModuleProxy) Read(packedData uint64) (uint32, uint32, []byte, error) {
 	return mp.wazeroModule.Memory().Read(packedData)
 }
-func (mp *wazeroModuleProxy) Write(offset uint32, data []byte) error {
+func (mp *wazeroModuleProxy) Write(offset uint32, data any) error {
 	return mp.wazeroModule.Memory().Write(offset, data)
 }
 func (mp *wazeroModuleProxy) Size() uint32 {
