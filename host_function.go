@@ -153,6 +153,8 @@ func (hf *HostFunction) convertParamsToStruct(ctx context.Context, m ModuleProxy
 // |                  | information for each item in the slice.                  |
 // +-----------------------------------------------------------------------------+
 func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy, results *Results, stackParams []uint64) ([]uint64, map[uint32]uint32, error) {
+
+	// If the host function does not return anything, just skip the whole process
 	if results == nil {
 		return nil, nil, nil
 	}
@@ -190,7 +192,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 			return nil, nil, err
 		}
 
-		// pack the offset and size into a single uint64
+		// Pack the offset and size into a single uint64
 		packedDatas[i] = mdk.PackUI64(uint8(valueType), offset, offsetSize)
 	}
 

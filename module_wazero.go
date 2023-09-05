@@ -298,10 +298,10 @@ func (mp *wazeroModuleProxy) Free(offset uint32) error {
 //			// ...
 //			return m.Return(
 //				[]byte("Hello"),
-//				[]byte("World"),
+//				590110011,
+//				"Hello string",
 //			)
 //		},
-//		Returns: []wasify.ValueType{wasify.ValueTypeByte, wasify.ValueTypeByte},
 //	},
 func (mp *wazeroModuleProxy) Return(args ...Result) *Results {
 	returns := make(Results, len(args))

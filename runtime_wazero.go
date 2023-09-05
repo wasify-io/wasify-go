@@ -5,6 +5,7 @@ package wasify
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/tetratelabs/wazero"
@@ -147,11 +148,13 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 
 		moduleConfig.log.Debug("exporting host function", "function", hf.Name, "module", moduleConfig.Name)
 
+		fmt.Println("hf.Returns", hf.Returns, "len", len(hf.Returns), "name", hf.Name)
+
 		modBuilder = modBuilder.
 			NewFunctionBuilder().
 			WithGoModuleFunction(api.GoModuleFunc(wazeroHostFunctionCallback(wazeroModule, moduleConfig, &hf)),
 				r.convertToAPIValueTypes(hf.Params),
-				r.convertToAPIValueTypes([]ValueType{ValueTypeBytes}),
+				r.convertToAPIValueTypes([]ValueType{ValueTypeI64}),
 			).
 			Export(hf.Name)
 	}
