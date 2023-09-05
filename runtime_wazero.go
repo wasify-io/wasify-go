@@ -164,7 +164,7 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 	}
 
 	// NewHostModuleBuilder for wasify pre-defined host functions
-	modBuilder = r.runtime.NewHostModuleBuilder(MDK_ENV)
+	modBuilder = r.runtime.NewHostModuleBuilder(WASIFY_NAMESPACE)
 
 	// initialize pre-defined host functions and pass any necessary configurations
 	hf := newHostFunctions(moduleConfig)

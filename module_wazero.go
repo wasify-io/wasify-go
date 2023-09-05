@@ -117,7 +117,10 @@ func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, []byte, error) {
 	return offset, size, buf, err
 }
 
-// Write writes the slice to the underlying buffer at the offset or returns error if out of range.
+// Write writes the provided value (v) to the memory buffer managed by the wazeroMemory instance,
+// starting at the specified offset.
+// If the type of v is unsupported, or if the operation attempts to write out of the buffer's range,
+// an error will be returned.
 func (m *wazeroMemory) Write(offset uint32, v any) error {
 	var err error
 
@@ -302,8 +305,6 @@ func (mp *wazeroModuleProxy) Free(offset uint32) error {
 //	},
 func (mp *wazeroModuleProxy) Return(args ...Result) *Results {
 	returns := make(Results, len(args))
-	for i, arg := range args {
-		returns[i] = arg
-	}
+	copy(returns, args)
 	return &returns
 }

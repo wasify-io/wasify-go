@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-const MDK_ENV = "wasify"
+const WASIFY_NAMESPACE = "wasify"
 
 // hostFunctions is a list of pre-defined host functions
 type hostFunctions struct {
@@ -40,8 +40,7 @@ func (hf *hostFunctions) newLog() *HostFunction {
 			return nil
 
 		},
-		Params:  []ValueType{ValueTypeBytes, ValueTypeBytes},
-		Returns: []ValueType{},
+		Params: []ValueType{ValueTypeBytes, ValueTypeBytes},
 
 		// required fields
 		moduleConfig:  hf.moduleConfig,
