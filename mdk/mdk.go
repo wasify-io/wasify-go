@@ -16,7 +16,10 @@ type Result struct {
 // ValueType represents the type of value used in function parameters and returns.
 type ValueType uint8
 
-const valueTypePack uint8 = 255
+// reserved value type for packedData
+const valueTypePack ValueType = 255
+
+// supported value types in params and returns
 const (
 	ValueTypeBytes ValueType = iota
 	ValueTypeI32
@@ -61,7 +64,11 @@ func Arg(data any) ArgOffset {
 // unpacking each element into a Result struct and storing it in a slice of Results.
 // Finally, the function returns the slice of Results.
 func Results(resultsOffset ResultOffset) []Result {
-	_, offset, size := UnpackUI64(uint64(resultsOffset))
+	t, offset, size := UnpackUI64(uint64(resultsOffset))
+
+	if ValueType(t) != valueTypePack {
+		panic("can't unpack data, value type is not type of valueTypePack")
+	}
 
 	// calculate the number of elements in the array
 	count := size / 8
@@ -105,7 +112,7 @@ func Results(resultsOffset ResultOffset) []Result {
 // This function is useful for passing byte slices to WebAssembly functions.
 func Alloc(data []byte) uint64 {
 	offset, size := bytesToLeakedPtr(data)
-	return PackUI64(valueTypePack, offset, size)
+	return PackUI64(uint8(valueTypePack), offset, size)
 }
 
 // FreeMemory frees the memory allocated by the AllocateString or AllocateBytes functions.

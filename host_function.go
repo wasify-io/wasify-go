@@ -12,9 +12,10 @@ import (
 // ValueType represents the type of value used in function parameters and returns.
 type ValueType uint8
 
-// Currently only supported type is byte.
-// bytes used for communication betwen host and guest.
+// reserved value type for packedData
 const valueTypePack uint8 = 255
+
+// supported value types in params and returns
 const (
 	ValueTypeBytes ValueType = iota
 	ValueTypeI32
