@@ -14,9 +14,9 @@ type ValueType uint8
 
 // Currently only supported type is byte.
 // bytes used for communication betwen host and guest.
-const valueTypePack uint8 = 0
+const valueTypePack uint8 = 255
 const (
-	ValueTypeBytes ValueType = iota + 1
+	ValueTypeBytes ValueType = iota
 	ValueTypeI32
 	ValueTypeI64
 	ValueTypeF32

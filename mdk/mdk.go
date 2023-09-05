@@ -16,9 +16,9 @@ type Result struct {
 // ValueType represents the type of value used in function parameters and returns.
 type ValueType uint8
 
-const valueTypePack uint8 = 0
+const valueTypePack uint8 = 255
 const (
-	ValueTypeBytes ValueType = iota + 1
+	ValueTypeBytes ValueType = iota
 	ValueTypeI32
 	ValueTypeI64
 	ValueTypeF32
