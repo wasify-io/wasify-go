@@ -184,7 +184,8 @@ func Free(packedData uint64) {
 // - Next 32 bits: offset (ptr)
 // - Lowest 24 bits: size
 //
-// This function will panic if the provided size is larger than what can be represented in 24 bits (i.e., larger than 16,777,215).
+// This function will return error if the provided size is larger than what can be represented in 24 bits
+// (i.e., larger than 16,777,215).
 func PackUI64(dataType ValueType, ptr uint32, size uint32) (uint64, error) {
 	// Check if the size can be represented in 24 bits
 	if size >= (1 << 24) {
