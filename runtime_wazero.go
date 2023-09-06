@@ -220,6 +220,8 @@ func (r *wazeroRuntime) instantiateModule(ctx context.Context, moduleConfig *Mod
 
 	// TODO: Add more configurations
 	cfg := wazero.NewModuleConfig()
+
+	// FIXME: Remove below line later
 	cfg = cfg.WithStdin(os.Stdin).WithStderr(os.Stderr).WithStdout(os.Stdout)
 
 	if moduleConfig != nil && moduleConfig.FSConfig.Enabled {
