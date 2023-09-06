@@ -28,10 +28,12 @@ const valueTypePack ValueType = 255
 // These constants represent the possible data types that can be used in function parameters and returns.
 const (
 	ValueTypeBytes ValueType = iota
+	ValueTypeByte
 	ValueTypeI32
 	ValueTypeI64
 	ValueTypeF32
 	ValueTypeF64
+	ValueTypeString
 )
 
 // Arg prepares data for passing as an argument to a host function in WebAssembly.
@@ -87,6 +89,8 @@ func Results(resultsOffset ResultOffset) []Result {
 		switch valueType {
 		case ValueTypeBytes:
 			value = unsafe.Slice((*byte)(unsafe.Pointer(uintptr(offset))), size)
+		case ValueTypeByte:
+			value = *(*byte)(unsafe.Pointer(uintptr(offset)))
 		case ValueTypeI32:
 			value = *(*uint32)(unsafe.Pointer(uintptr(offset)))
 		case ValueTypeI64:
@@ -95,6 +99,8 @@ func Results(resultsOffset ResultOffset) []Result {
 			value = *(*float32)(unsafe.Pointer(uintptr(offset)))
 		case ValueTypeF64:
 			value = *(*float64)(unsafe.Pointer(uintptr(offset)))
+		case ValueTypeString:
+			value = string(unsafe.String((*byte)(unsafe.Pointer(uintptr(offset))), size))
 		}
 
 		data[i] = Result{
@@ -121,6 +127,8 @@ func Alloc(data any) (uint64, error) {
 	switch dataType {
 	case ValueTypeBytes:
 		offset = AllocBytes(data.([]byte), offsetSize)
+	case ValueTypeByte:
+		offset = AllocByte(data.(byte))
 	case ValueTypeI32:
 		offset = AllocUint32Le(data.(uint32))
 	case ValueTypeI64:
@@ -129,6 +137,8 @@ func Alloc(data any) (uint64, error) {
 		offset = AllocFloat32Le(data.(float32))
 	case ValueTypeF64:
 		offset = AllocFloat64Le(data.(float64))
+	case ValueTypeString:
+		offset = AllocString(data.(string), offsetSize)
 	default:
 		return 0, fmt.Errorf("unsupported data type %d for allocation", dataType)
 	}
@@ -138,6 +148,9 @@ func Alloc(data any) (uint64, error) {
 
 func AllocBytes(data []byte, offsetSize uint32) uint32 {
 	return bytesToLeakedPtr(data, offsetSize)
+}
+func AllocByte(data byte) uint32 {
+	return byteToLeakedPtr(data)
 }
 func AllocUint32Le(data uint32) uint32 {
 	return uint32ToLeakedPtr(data)
@@ -150,6 +163,9 @@ func AllocFloat32Le(data float32) uint32 {
 }
 func AllocFloat64Le(data float64) uint32 {
 	return float64ToLeakedPtr(data)
+}
+func AllocString(data string, offsetSize uint32) uint32 {
+	return stringToLeakedPtr(data, offsetSize)
 }
 
 // FreeMemory frees the memory allocated by the AllocateString or AllocateBytes functions.

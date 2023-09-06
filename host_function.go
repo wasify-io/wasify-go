@@ -16,11 +16,13 @@ const valueTypePack uint8 = 255
 
 // supported value types in params and returns
 const (
-	ValueTypeBytes ValueType = ValueType(mdk.ValueTypeBytes)
-	ValueTypeI32   ValueType = ValueType(mdk.ValueTypeI32)
-	ValueTypeI64   ValueType = ValueType(mdk.ValueTypeI64)
-	ValueTypeF32   ValueType = ValueType(mdk.ValueTypeF32)
-	ValueTypeF64   ValueType = ValueType(mdk.ValueTypeF64)
+	ValueTypeBytes  ValueType = ValueType(mdk.ValueTypeBytes)
+	ValueTypeByte   ValueType = ValueType(mdk.ValueTypeByte)
+	ValueTypeI32    ValueType = ValueType(mdk.ValueTypeI32)
+	ValueTypeI64    ValueType = ValueType(mdk.ValueTypeI64)
+	ValueTypeF32    ValueType = ValueType(mdk.ValueTypeF32)
+	ValueTypeF64    ValueType = ValueType(mdk.ValueTypeF64)
+	ValueTypeString ValueType = ValueType(mdk.ValueTypeString)
 )
 
 // Param defines the attributes of a function parameter.

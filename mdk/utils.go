@@ -26,40 +26,55 @@ func bytesToLeakedPtr(data []byte, offsetSize uint32) (offset uint32) {
 	return uint32(uintptr(ptr))
 }
 
+// byteToLeakedPtr allocates memory for a byte (uint8) and stores the value in that memory.
+// It returns the offset to the allocated memory.
+func byteToLeakedPtr(data byte) (offset uint32) {
+	ptr := unsafe.Pointer(C.malloc(1))
+	*(*byte)(ptr) = data
+
+	return uint32(uintptr(ptr))
+}
+
 // uint32ToLeakedPtr allocates memory for a uint32 and stores the value in that memory.
 // It returns the offset to the allocated memory.
-func uint32ToLeakedPtr(value uint32) (offset uint32) {
+func uint32ToLeakedPtr(data uint32) (offset uint32) {
 	ptr := unsafe.Pointer(C.malloc(4))
-	*(*uint32)(ptr) = value
+	*(*uint32)(ptr) = data
 
 	return uint32(uintptr(ptr))
 }
 
 // uint64ToLeakedPtr allocates memory for a uint64 and stores the value in that memory.
 // It returns the offset to the allocated memory.
-func uint64ToLeakedPtr(value uint64) (offset uint32) {
+func uint64ToLeakedPtr(data uint64) (offset uint32) {
 	ptr := unsafe.Pointer(C.malloc(4))
-	*(*uint64)(ptr) = value
+	*(*uint64)(ptr) = data
 
 	return uint32(uintptr(ptr))
 }
 
 // float32ToLeakedPtr allocates memory for a float32 and stores the value in that memory.
 // It returns the offset to the allocated memory.
-func float32ToLeakedPtr(value float32) (offset uint32) {
+func float32ToLeakedPtr(data float32) (offset uint32) {
 	ptr := unsafe.Pointer(C.malloc(4))
-	*(*float32)(ptr) = value
+	*(*float32)(ptr) = data
 
 	return uint32(uintptr(ptr))
 }
 
 // float64ToLeakedPtr allocates memory for a float64 and stores the value in that memory.
 // It returns the offset to the allocated memory.
-func float64ToLeakedPtr(value float64) (offset uint32) {
+func float64ToLeakedPtr(data float64) (offset uint32) {
 	ptr := unsafe.Pointer(C.malloc(4))
-	*(*float64)(ptr) = value
+	*(*float64)(ptr) = data
 
 	return uint32(uintptr(ptr))
+}
+
+// stringToLeakedPtr allocates memory for a string and stores the value in that memory.
+// It returns the offset to the allocated memory.
+func stringToLeakedPtr(data string, offsetSize uint32) (offset uint32) {
+	return bytesToLeakedPtr([]byte(data), offsetSize)
 }
 
 // GetOffsetSizeAndDataTypeByConversion determines the memory size (offsetSize) and ValueType
@@ -70,6 +85,9 @@ func GetOffsetSizeAndDataTypeByConversion(data any) (dataType ValueType, offsetS
 	case []byte:
 		offsetSize = uint32(len(vTyped))
 		dataType = ValueTypeBytes
+	case byte:
+		offsetSize = 1
+		dataType = ValueTypeByte
 	case uint32:
 		offsetSize = 4
 		dataType = ValueTypeI32
@@ -82,8 +100,11 @@ func GetOffsetSizeAndDataTypeByConversion(data any) (dataType ValueType, offsetS
 	case float64:
 		offsetSize = 8
 		dataType = ValueTypeF64
+	case string:
+		offsetSize = uint32(len(vTyped))
+		dataType = ValueTypeString
 	default:
-		err = fmt.Errorf("unsupported data type %s", reflect.TypeOf(data))
+		err = fmt.Errorf("unsupported conversion data type %s", reflect.TypeOf(vTyped))
 		return
 	}
 

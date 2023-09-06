@@ -111,6 +111,8 @@ func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, any, error) {
 	switch ValueType(valueType) {
 	case ValueTypeBytes:
 		data, err = m.ReadBytes(offset, size)
+	case ValueTypeByte:
+		data, err = m.ReadByte(offset)
 	case ValueTypeI32:
 		data, err = m.ReadUint32Le(offset)
 	case ValueTypeI64:
@@ -119,6 +121,8 @@ func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, any, error) {
 		data, err = m.ReadFloat32Le(offset)
 	case ValueTypeF64:
 		data, err = m.ReadFloat64Le(offset)
+	case ValueTypeString:
+		data, err = m.ReadString(offset, size)
 	default:
 		err = fmt.Errorf("Unsupported read data type %d", valueType)
 	}
@@ -137,6 +141,17 @@ func (m *wazeroMemory) ReadBytes(offset uint32, size uint32) ([]byte, error) {
 		err := fmt.Errorf("Memory.ReadBytes(%d, %d) out of range of memory size %d", offset, size, m.Size())
 		m.log.Error(err.Error())
 		return nil, err
+	}
+
+	return buf, nil
+}
+
+func (m *wazeroMemory) ReadByte(offset uint32) (byte, error) {
+	buf, ok := m.mod.Memory().ReadByte(offset)
+	if !ok {
+		err := fmt.Errorf("Memory.ReadByte(%d, %d) out of range of memory size %d", offset, 1, m.Size())
+		m.log.Error(err.Error())
+		return 0, err
 	}
 
 	return buf, nil
@@ -184,6 +199,15 @@ func (m *wazeroMemory) ReadFloat64Le(offset uint32) (float64, error) {
 	}
 
 	return data, nil
+}
+
+func (m *wazeroMemory) ReadString(offset uint32, size uint32) (string, error) {
+	buf, err := m.ReadBytes(offset, size)
+	if err != nil {
+		return "", err
+	}
+
+	return string(buf), err
 }
 
 // Write writes a value of type interface{} to the memory buffer managed by the wazeroMemory instance,
