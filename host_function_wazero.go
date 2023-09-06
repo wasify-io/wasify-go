@@ -2,6 +2,7 @@ package wasify
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/tetratelabs/wazero/api"
 )
@@ -53,12 +54,16 @@ import (
 // +--------------------------------------+
 func wazeroHostFunctionCallback(wazeroModule *wazeroModule, moduleConfig *ModuleConfig, hf *HostFunction) func(context.Context, api.Module, []uint64) {
 
+	fmt.Println("callback outside hf", hf.Name)
+
 	return func(ctx context.Context, mod api.Module, stack []uint64) {
 
 		wazeroModule.mod = mod
 		moduleProxy := &wazeroModuleProxy{
 			wazeroModule,
 		}
+
+		fmt.Println("callback inside hf", hf.Name)
 
 		params, err := hf.convertParamsToStruct(ctx, moduleProxy, stack)
 		if err != nil {

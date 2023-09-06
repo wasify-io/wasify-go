@@ -133,7 +133,15 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 	modBuilder := r.runtime.NewHostModuleBuilder(moduleConfig.Name)
 
 	// Iterate over the module's host functions and set up exports.
-	for _, hf := range moduleConfig.HostFunctions {
+	for _, hostFunc := range moduleConfig.HostFunctions {
+
+		// Create a new local variable inside the loop to ensure that
+		// each closure captures its own unique variable. This prevents
+		// the inadvertent capturing of the loop iterator variable, which
+		// would result in all closures referencing the last element
+		// in the moduleConfig.HostFunctions slice.
+		hf := hostFunc
+
 		// Associate the host function with module-related information.
 		// This configuration ensures that the host function can access ModuleConfig data from various contexts.
 		// Additionally, we set up an allocationMap specific to the host function, creating a map that stores
@@ -142,6 +150,7 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 		// We use allocationMap operations for Params provided in host function and Returns, which originally
 		// should be freed up.
 		// See host_function.go for more details.
+
 		hf.moduleConfig = moduleConfig
 		hf.allocationMap = newAllocationMap[uint32, uint32]()
 
