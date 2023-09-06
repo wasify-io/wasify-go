@@ -22,7 +22,6 @@ func free(offset uint32) {
 func bytesToLeakedPtr(data []byte, offsetSize uint32) (offset uint32) {
 	ptr := unsafe.Pointer(C.malloc(C.ulong(offsetSize)))
 	copy(unsafe.Slice((*byte)(ptr), C.ulong(offsetSize)), data)
-
 	return uint32(uintptr(ptr))
 }
 
@@ -74,7 +73,8 @@ func float64ToLeakedPtr(data float64) (offset uint32) {
 // stringToLeakedPtr allocates memory for a string and stores the value in that memory.
 // It returns the offset to the allocated memory.
 func stringToLeakedPtr(data string, offsetSize uint32) (offset uint32) {
-	return bytesToLeakedPtr([]byte(data), offsetSize)
+	byteSlice := unsafe.Slice(unsafe.StringData(data), len(data))
+	return bytesToLeakedPtr(byteSlice, offsetSize)
 }
 
 // GetOffsetSizeAndDataTypeByConversion determines the memory size (offsetSize) and ValueType
