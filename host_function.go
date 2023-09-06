@@ -9,16 +9,20 @@ import (
 )
 
 // ValueType represents the type of value used in function parameters and returns.
-type ValueType uint8
+type ValueType mdk.ValueType
 
-// Currently only supported type is byte.
-// bytes used for communication betwen host and guest.
+// reserved value type for packedData
+const valueTypePack uint8 = 255
+
+// supported value types in params and returns
 const (
-	ValueTypeByte ValueType = iota
-	// ValueTypeI32
-	// ValueTypeI64
-	// ValueTypeF32
-	// ValueTypeF64
+	ValueTypeBytes  ValueType = ValueType(mdk.ValueTypeBytes)
+	ValueTypeByte   ValueType = ValueType(mdk.ValueTypeByte)
+	ValueTypeI32    ValueType = ValueType(mdk.ValueTypeI32)
+	ValueTypeI64    ValueType = ValueType(mdk.ValueTypeI64)
+	ValueTypeF32    ValueType = ValueType(mdk.ValueTypeF32)
+	ValueTypeF64    ValueType = ValueType(mdk.ValueTypeF64)
+	ValueTypeString ValueType = ValueType(mdk.ValueTypeString)
 )
 
 // Param defines the attributes of a function parameter.
@@ -30,13 +34,13 @@ type Param struct {
 	Size uint32
 
 	// Actual data value, passed from guest function as an argument.
-	Value []byte
+	Value any
 }
 type Params []Param
 
 // ReturnValue represents the value returned from a function.
-type Result []byte
-type Results [][]byte
+type Result any
+type Results []Result
 
 // HostFunction defines a host function that can be invoked from a guest module.
 type HostFunction struct {
@@ -80,14 +84,22 @@ type HostFunctionCallback func(ctx context.Context, moduleProxy ModuleProxy, sta
 // allowing for easier access to parameter data instead of dealing with memory stacks and offsets.
 func (hf *HostFunction) convertParamsToStruct(ctx context.Context, m ModuleProxy, stackParams []uint64) (Params, error) {
 
-	if len(stackParams) != len(hf.Params) {
-		return nil, fmt.Errorf("params mismatch expected: %d received: %d", len(hf.Params), len(stackParams))
+	// If user did not define params, skip the whole process, we still might get stackParams[0] = 0
+	if len(hf.Params) == 0 {
+		return nil, nil
+	}
+
+	if len(hf.Params) != len(stackParams) {
+		return nil, fmt.Errorf("%s: params mismatch expected: %d received: %d ", hf.Name, len(hf.Params), len(stackParams))
 	}
 
 	params := make(Params, len(hf.Params))
 
-	for i, packedData := range stackParams {
-		offset, offsetSize, data, err := m.Read(packedData)
+	for i := range hf.Params {
+
+		packedData := &stackParams[i]
+
+		offset, offsetSize, data, err := m.Read(*packedData)
 		if err != nil {
 			err = errors.Join(errors.New("can't read params packed data"), err)
 			return nil, err
@@ -112,56 +124,53 @@ func (hf *HostFunction) convertParamsToStruct(ctx context.Context, m ModuleProxy
 // It also packs and returns the data as packedDatas and the returnOffsets map.
 //
 // writeResultsToMemory handles the process as follows:
-// It gathers all the returned values, allocates memory for each value based on its size,
+// It gathers all the returned values, allocates memory for each value based on its type and size,
 // then compiles these individual allocations into a single uint64 called packedData and appends it to a slice.
-// Next, it allocates memory for this slice, containing all the packedData entries, based on the slice's length.
-// This results in a new packedData, which is stored in linear memory.
-// The guest function can read this packedData, unpack it, and extract information: the first 32 bits indicate
-// the slice's offset, and the subsequent 32 bits denote the length of the slice.
-// Each item in the slice is itself a packedData, which can be further unpacked to retrieve the actual values.
+// This packedData now contains three pieces of information:
+// the first 8 bits (dataType) indicate the type of data (byte, uint32, etc.),
+// the next 32 bits indicate the data's offset in memory,
+// and the subsequent 24 bits represent the length or size of the data.
 //
-// +-----------------------------------------------------+
-// | Collect returned values                             |
-// |                                                     |
-// |   +---+   +---+   +---+   +---+   +---+   +---+     |
-// |   | V1|   | V2|   | V3|   | V4|   | V5|   | V6|     |
-// |   +---+   +---+   +---+   +---+   +---+   +---+     |
-// |                                                     |
-// | Allocate memory for each value based on size        |
-// |                                                     |
-// |   +---+   +---+   +---+   +---+   +---+   +---+     |
-// |   |   |   |   |   |   |   |   |   |   |   |   |     |
-// |   |   |   |   |   |   |   |   |   |   |   |   |     |
-// |   +---+   +---+   +---+   +---+   +---+   +---+     |
-// |                                                     |
-// | Compile allocations into a single packedData (PD)   |
-// |                                                     |
-// |   +---+   +---+   +---+   +---+   +---+   +---+     |
-// |   |PD1|   |PD2|   |PD3|   |PD4|   |PD5|   |PD6|     |
-// |   +---+   +---+   +---+   +---+   +---+   +---+     |
-// |                                                     |
-// | Allocate memory for the packedData slice            |
-// |                                                     |
-// |   +---------------------------------------------+   |
-// |   |                                             |
-// |   +---------------------------------------------+   |
-// |                                                     |
-// | Store the new packedData slice in linear memory     |
-// |                                                     |
-// |   +---------------------------------------------+   |
-// |   | PD1 | PD2 | PD3 | PD4 | PD5 | PD6 | PD7 |...|   |
-// |   +---------------------------------------------+   |
-// |                                                     |
-// | Read packedData slice, unpack, and extract data     |
-// |                                                     |
-// +-----------------------------------------------------+
+// The function then allocates memory for this slice, containing all the packedData entries, based on the slice's length.
+// This results in a new packedData slice, which is stored in linear memory.
+// The guest function can read this packedData slice, unpack it, and extract the required information for each item.
+//
+// +-----------------------------------------------------------------------------+
+// |                              Packing and Storing Data                       |
+// +-----------------------------------------------------------------------------+
+// | Step             | Description                                              |
+// +------------------+----------------------------------------------------------+
+// | Data Collection  | Collect the returned values from the function.           |
+// |                  | For example: V1, V2, V3, ...                             |
+// +------------------+----------------------------------------------------------+
+// | Data Allocation  | Allocate memory for each value based on its type & size. |
+// |                  | Memory spaces are defined for different data types.      |
+// +------------------+----------------------------------------------------------+
+// | Packing Logic    | The packed data format (each of 64 bits or 8 bytes):     |
+// |                  | - First 1 byte (8 bits)  : Data type (e.g., byte, uint32)    |
+// |                  | - Next 4 bytes (32 bits) : Data offset in memory         |
+// |                  | - Last 3 bytes (24 bits) : Data length or size           |
+// +------------------+----------------------------------------------------------+
+// | Packed Data      | Compile individual allocations into packedData entries.  |
+// | Creation         | For example: PD1, PD2, PD3, ...                          |
+// +------------------+----------------------------------------------------------+
+// | Slice Allocation | Allocate a continuous block of memory for the packedData |
+// |                  | slice. This will store the array of packedData entries.  |
+// +------------------+----------------------------------------------------------+
+// | Storing in       | Insert the packedData slice into linear memory.          |
+// | Linear Memory    | Now, the guest function can read, unpack, and extract    |
+// |                  | information for each item in the slice.                  |
+// +-----------------------------------------------------------------------------+
 func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy, results *Results, stackParams []uint64) ([]uint64, map[uint32]uint32, error) {
+
+	// If the host function does not return anything, just skip the whole process
 	if results == nil {
 		return nil, nil, nil
 	}
 
+	// Return runtime error if return values does not match
 	if len(*results) != len(hf.Returns) {
-		return nil, nil, fmt.Errorf("results mismatch. expected: %d returned: %d", len(hf.Returns), len(*results))
+		return nil, nil, fmt.Errorf("return value missmatch %d != %d", len(*results), len(hf.Returns))
 	}
 
 	// First, allocate memory for each byte slice and store the offsets in a slice
@@ -171,7 +180,19 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	returnOffsets := make(map[uint32]uint32, len(*results)+1)
 
 	for i, returnValue := range *results {
-		offsetSize := uint32(len(returnValue))
+
+		// get offset size and result value type (ValueType) by result's returnValue
+		valueType, offsetSize, err := mdk.GetOffsetSizeAndDataTypeByConversion(returnValue)
+		if err != nil {
+			err = errors.Join(errors.New("can't convert result"), err)
+			return nil, nil, err
+		}
+
+		if ValueType(valueType) != hf.Returns[i] {
+			return nil, nil, fmt.Errorf("return value does not match actual value %d != %d", valueType, hf.Returns[i])
+		}
+
+		// allocate memory for each value
 		offset, err := m.Malloc(offsetSize)
 		if err != nil {
 			err = errors.Join(errors.New("can't allocate memory for return value"), err)
@@ -179,6 +200,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 		}
 
 		returnOffsets[offset] = offsetSize
+
 		// Add offset and offset size in the hsot function's allocationMap
 		// for later cleanup.
 		hf.allocationMap.store(offset, offsetSize)
@@ -189,8 +211,11 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 			return nil, nil, err
 		}
 
-		// pack the offset and size into a single uint64
-		packedDatas[i] = mdk.PackUI64(offset, offsetSize)
+		// Pack the offset and size into a single uint64
+		packedDatas[i], err = mdk.PackUI64(valueType, offset, offsetSize)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// Then, allocate memory for the array of packed offsets and sizes
@@ -213,7 +238,10 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	}
 
 	// Final packed data, which contains offset and size of packedDatas slice
-	packedData := mdk.PackUI64(offset, offsetSize)
+	packedData, err := mdk.PackUI64(mdk.ValueType(valueTypePack), offset, offsetSize)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// Store final packedData into linear memory
 	stackParams[0] = packedData
@@ -258,11 +286,11 @@ func (hf *HostFunction) cleanup(m ModuleProxy, params Params, returnOffsets map[
 	}
 
 	hf.moduleConfig.log.Debug(
-		"cleanup: host func param and returns",
+		"cleanup: host func params and returns",
 		"total_bytes", totalSize,
 		"available_bytes", hf.allocationMap.totalSize(),
 		"func", hf.Name,
-		"module", hf.moduleConfig.Name)
+		"module", hf.moduleConfig.Namespace)
 
 	return nil
 }

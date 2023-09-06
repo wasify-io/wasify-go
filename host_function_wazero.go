@@ -2,6 +2,7 @@ package wasify
 
 import (
 	"context"
+	"errors"
 
 	"github.com/tetratelabs/wazero/api"
 )
@@ -62,7 +63,7 @@ func wazeroHostFunctionCallback(wazeroModule *wazeroModule, moduleConfig *Module
 
 		params, err := hf.convertParamsToStruct(ctx, moduleProxy, stack)
 		if err != nil {
-			moduleConfig.log.Error(err.Error(), "func", hf.Name, "module", wazeroModule.Name)
+			moduleConfig.log.Error(err.Error(), "func", hf.Name, "module", wazeroModule.Namespace)
 			panic(err)
 		}
 
@@ -72,13 +73,14 @@ func wazeroHostFunctionCallback(wazeroModule *wazeroModule, moduleConfig *Module
 		// convert Go types to uint64 values and write them to the stack
 		_, returnOffsets, err := hf.writeResultsToMemory(ctx, moduleProxy, returnValues, stack)
 		if err != nil {
-			moduleConfig.log.Error(err.Error(), "func", hf.Name, "module", wazeroModule.Name)
+			err = errors.Join(errors.New("function executed, but can't write to the memory"), err)
+			moduleConfig.log.Error(err.Error(), "func", hf.Name, "module", wazeroModule.Namespace)
 			panic(err)
 		}
 
 		err = hf.cleanup(moduleProxy, params, returnOffsets)
 		if err != nil {
-			moduleConfig.log.Error(err.Error(), "func", hf.Name, "module", wazeroModule.Name)
+			moduleConfig.log.Error(err.Error(), "func", hf.Name, "module", wazeroModule.Namespace)
 			panic(err)
 		}
 	}

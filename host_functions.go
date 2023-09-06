@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-const MDK_ENV = "wasify"
+const WASIFY_NAMESPACE = "wasify"
 
 // hostFunctions is a list of pre-defined host functions
 type hostFunctions struct {
@@ -23,8 +23,8 @@ func (hf *hostFunctions) newLog() *HostFunction {
 		Name: "log",
 		Callback: func(ctx context.Context, m ModuleProxy, params Params) *Results {
 
-			msg := string(params[0].Value)
-			lvl := LogSeverity(params[1].Value[0] - '0')
+			msg := params[0].Value.(string)
+			lvl := LogSeverity(params[1].Value.(uint8))
 
 			switch lvl {
 			case LogDebug:
@@ -40,8 +40,8 @@ func (hf *hostFunctions) newLog() *HostFunction {
 			return nil
 
 		},
-		Params:  []ValueType{ValueTypeByte, ValueTypeByte},
-		Returns: []ValueType{},
+		Params:  []ValueType{ValueTypeBytes, ValueTypeBytes},
+		Returns: nil,
 
 		// required fields
 		moduleConfig:  hf.moduleConfig,

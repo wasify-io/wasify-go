@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/tetratelabs/wazero/api"
 	"github.com/wasify-io/wasify-go/mdk"
@@ -44,7 +45,7 @@ func (m *wazeroModule) GuestFunction(ctx context.Context, name string) GuestFunc
 
 	fn := m.mod.ExportedFunction(name)
 	if fn == nil {
-		m.log.Warn("exported function does not exist", "function", name, "module", m.Name)
+		m.log.Warn("exported function does not exist", "function", name, "module", m.Namespace)
 	}
 
 	return &wazeroGuestFunction{ctx, fn, name, m.ModuleConfig}
@@ -65,14 +66,14 @@ type wazeroGuestFunction struct {
 // which could lead to excessive log entries and complicate debugging for host funcs.
 func (gf *wazeroGuestFunction) Invoke(params ...uint64) ([]uint64, error) {
 
-	if gf.name != "malloc" && gf.name != "free" {
-		gf.log.Info("calling function", "name", gf.name, "module", gf.Name, "params", params)
+	if gf.Namespace != "malloc" && gf.Namespace != "free" {
+		gf.log.Info("calling function", "name", gf.Namespace, "module", gf.Namespace, "params", params)
 	}
 
 	// TODO: Use CallWithStack
 	res, err := gf.fn.Call(gf.ctx, params...)
 	if err != nil {
-		err = errors.Join(errors.New("can't call guest function"), err)
+		err = errors.Join(errors.New("An error occurred while attempting to invoke the guest function."), err)
 		gf.log.Error(err.Error())
 		return nil, err
 	}
@@ -89,37 +90,201 @@ type wazeroMemory struct {
 	*wazeroModule
 }
 
-// Read reads byteCount bytes from the underlying buffer at the offset or
+// Read extracts and reads data from a packed memory location.
 //
-// It unpacks the packedData to obtain offset and size information, then reads
-// data from the memory at the specified offset and size.
-// Returns the offset, size, read data, and any potential error like if out of range.
-// Packed data is a uint64 where the first 32 bits represent the offset
-// and the following 32 bits represent the size of the actual data to be read.
-func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, []byte, error) {
+// Given a packed data representation, this function determines the type, offset, and size of the data to be read.
+// It then reads the data from the specified offset and returns it.
+//
+// Returns:
+// - offset: The memory location where the data starts.
+// - size: The size or length of the data.
+// - data: The actual extracted data of the determined type (i.e., byte slice, uint32, uint64, float32, float64).
+// - error: An error if encountered (e.g., unsupported data type, out-of-range error).
+func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, any, error) {
 
 	var err error
+	var data any
 
 	// Unpack the packedData to extract offset and size values.
-	offset, size := mdk.UnpackUI64(packedData)
+	valueType, offset, size := mdk.UnpackUI64(packedData)
 
-	// Read data from memory using the extracted offset and size.
-	buf, ok := m.mod.Memory().Read(offset, size)
+	switch ValueType(valueType) {
+	case ValueTypeBytes:
+		data, err = m.ReadBytes(offset, size)
+	case ValueTypeByte:
+		data, err = m.ReadByte(offset)
+	case ValueTypeI32:
+		data, err = m.ReadUint32Le(offset)
+	case ValueTypeI64:
+		data, err = m.ReadUint64Le(offset)
+	case ValueTypeF32:
+		data, err = m.ReadFloat32Le(offset)
+	case ValueTypeF64:
+		data, err = m.ReadFloat64Le(offset)
+	case ValueTypeString:
+		data, err = m.ReadString(offset, size)
+	default:
+		err = fmt.Errorf("Unsupported read data type %d", valueType)
+	}
 
-	if !ok {
-		err = fmt.Errorf("Memory.Read(%d, %d) out of range of memory size %d", offset, size, m.Size())
+	if err != nil {
 		m.log.Error(err.Error())
 		return 0, 0, nil, err
 	}
 
-	return offset, size, buf, err
+	return offset, size, data, err
 }
 
-// Write writes the slice to the underlying buffer at the offset or returns error if out of range.
-func (m *wazeroMemory) Write(offset uint32, v []byte) error {
+func (m *wazeroMemory) ReadBytes(offset uint32, size uint32) ([]byte, error) {
+	buf, ok := m.mod.Memory().Read(offset, size)
+	if !ok {
+		err := fmt.Errorf("Memory.ReadBytes(%d, %d) out of range of memory size %d", offset, size, m.Size())
+		m.log.Error(err.Error())
+		return nil, err
+	}
+
+	return buf, nil
+}
+
+func (m *wazeroMemory) ReadByte(offset uint32) (byte, error) {
+	buf, ok := m.mod.Memory().ReadByte(offset)
+	if !ok {
+		err := fmt.Errorf("Memory.ReadByte(%d, %d) out of range of memory size %d", offset, 1, m.Size())
+		m.log.Error(err.Error())
+		return 0, err
+	}
+
+	return buf, nil
+}
+
+func (m *wazeroMemory) ReadUint32Le(offset uint32) (uint32, error) {
+	data, ok := m.mod.Memory().ReadUint32Le(offset)
+	if !ok {
+		err := fmt.Errorf("Memory.ReadUint32Le(%d, %d) out of range of memory size %d", offset, 4, m.Size())
+		m.log.Error(err.Error())
+		return 0, err
+	}
+
+	return data, nil
+}
+
+func (m *wazeroMemory) ReadUint64Le(offset uint32) (uint64, error) {
+	data, ok := m.mod.Memory().ReadUint64Le(offset)
+	if !ok {
+		err := fmt.Errorf("Memory.ReadUint64Le(%d, %d) out of range of memory size %d", offset, 8, m.Size())
+		m.log.Error(err.Error())
+		return 0, err
+	}
+
+	return data, nil
+}
+
+func (m *wazeroMemory) ReadFloat32Le(offset uint32) (float32, error) {
+	data, ok := m.mod.Memory().ReadFloat32Le(offset)
+	if !ok {
+		err := fmt.Errorf("Memory.ReadFloat32Le(%d, %d) out of range of memory size %d", offset, 4, m.Size())
+		m.log.Error(err.Error())
+		return 0, err
+	}
+
+	return data, nil
+}
+
+func (m *wazeroMemory) ReadFloat64Le(offset uint32) (float64, error) {
+	data, ok := m.mod.Memory().ReadFloat64Le(offset)
+	if !ok {
+		err := fmt.Errorf("Memory.ReadFloat64Le(%d, %d) out of range of memory size %d", offset, 8, m.Size())
+		m.log.Error(err.Error())
+		return 0, err
+	}
+
+	return data, nil
+}
+
+func (m *wazeroMemory) ReadString(offset uint32, size uint32) (string, error) {
+	buf, err := m.ReadBytes(offset, size)
+	if err != nil {
+		return "", err
+	}
+
+	return string(buf), err
+}
+
+// Write writes a value of type interface{} to the memory buffer managed by the wazeroMemory instance,
+// starting at the given offset.
+//
+// The method identifies the type of the value and performs the appropriate write operation.
+func (m *wazeroMemory) Write(offset uint32, v any) error {
+	var err error
+
+	switch vTyped := v.(type) {
+	case []byte:
+		err = m.WriteBytes(offset, vTyped)
+	case uint32:
+		err = m.WriteUint32Le(offset, vTyped)
+	case uint64:
+		err = m.WriteUint64Le(offset, vTyped)
+	case float32:
+		err = m.WriteFloat32Le(offset, vTyped)
+	case float64:
+		err = m.WriteFloat64Le(offset, vTyped)
+	default:
+		err := fmt.Errorf("unsupported write data type %s", reflect.TypeOf(v))
+		m.log.Error(err.Error())
+		return err
+	}
+
+	return err
+}
+
+func (m *wazeroMemory) WriteBytes(offset uint32, v []byte) error {
 	ok := m.mod.Memory().Write(offset, v)
 	if !ok {
-		err := fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d", offset, len(v), m.Size())
+		err := fmt.Errorf(" Memory.WriteBytes(%d, %d) out of range of memory size %d", offset, len(v), m.Size())
+		m.log.Error(err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (m *wazeroMemory) WriteUint32Le(offset uint32, v uint32) error {
+	ok := m.mod.Memory().WriteUint32Le(offset, v)
+	if !ok {
+		err := fmt.Errorf(" Memory.WriteUint32Le(%d, %d) out of range of memory size %d", offset, 4, m.Size())
+		m.log.Error(err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (m *wazeroMemory) WriteUint64Le(offset uint32, v uint64) error {
+	ok := m.mod.Memory().WriteUint64Le(offset, v)
+	if !ok {
+		err := fmt.Errorf(" Memory.WriteUint64Le(%d, %d) out of range of memory size %d", offset, 8, m.Size())
+		m.log.Error(err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (m *wazeroMemory) WriteFloat32Le(offset uint32, v float32) error {
+	ok := m.mod.Memory().WriteFloat32Le(offset, v)
+	if !ok {
+		err := fmt.Errorf(" Memory.WriteFloat32Le(%d, %d) out of range of memory size %d", offset, 8, m.Size())
+		m.log.Error(err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (m *wazeroMemory) WriteFloat64Le(offset uint32, v float64) error {
+	ok := m.mod.Memory().WriteFloat64Le(offset, v)
+	if !ok {
+		err := fmt.Errorf(" Memory.WriteFloat64Le(%d, %d) out of range of memory size %d", offset, 8, m.Size())
 		m.log.Error(err.Error())
 		return err
 	}
@@ -141,21 +306,6 @@ func (r *wazeroMemory) Size() uint32 {
 // Malloc allows memory allocation from within a host function or externally,
 // returning the allocated memory offset to be used in a guest function.
 // This can be helpful, for instance, when passing string data from the host to the guest.
-//
-// Note: Always make sure to free memory after allocation.
-//
-// Example usage:
-//
-//	text := "Wasify.io"
-//	size := uint32(len(text))
-//	offset, err := module.Memory().Malloc(size)
-//	res, _ := module.GuestFunction(ctx, "guest_function_name").Invoke(offset)
-//	_, _, data, _ := module.Memory().Read(res[0])
-//	if err != nil {
-//		panic(err)
-//	}
-//
-// fmt.Println("DATA: ", string(data))
 //
 // Note: Always make sure to free memory after allocation.
 func (m *wazeroMemory) Malloc(size uint32) (uint32, error) {
@@ -198,10 +348,10 @@ type wazeroModuleProxy struct {
 func (mp *wazeroModuleProxy) GuestFunction(ctx context.Context, name string) GuestFunction {
 	return mp.wazeroModule.GuestFunction(ctx, name)
 }
-func (mp *wazeroModuleProxy) Read(packedData uint64) (uint32, uint32, []byte, error) {
+func (mp *wazeroModuleProxy) Read(packedData uint64) (uint32, uint32, any, error) {
 	return mp.wazeroModule.Memory().Read(packedData)
 }
-func (mp *wazeroModuleProxy) Write(offset uint32, data []byte) error {
+func (mp *wazeroModuleProxy) Write(offset uint32, data any) error {
 	return mp.wazeroModule.Memory().Write(offset, data)
 }
 func (mp *wazeroModuleProxy) Size() uint32 {
@@ -226,15 +376,13 @@ func (mp *wazeroModuleProxy) Free(offset uint32) error {
 //			// ...
 //			return m.Return(
 //				[]byte("Hello"),
-//				[]byte("World"),
+//				590110011,
+//				"Hello string",
 //			)
 //		},
-//		Returns: []wasify.ValueType{wasify.ValueTypeByte, wasify.ValueTypeByte},
 //	},
 func (mp *wazeroModuleProxy) Return(args ...Result) *Results {
 	returns := make(Results, len(args))
-	for i, arg := range args {
-		returns[i] = arg
-	}
+	copy(returns, args)
 	return &returns
 }

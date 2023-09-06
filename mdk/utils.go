@@ -3,7 +3,11 @@ package mdk
 // #include <stdlib.h>
 // #include <string.h>
 import "C"
-import "unsafe"
+import (
+	"fmt"
+	"reflect"
+	"unsafe"
+)
 
 // free deallocates the memory previously allocated by a call to malloc (C.malloc).
 // The offset parameter is a uint32 representing the starting address of the block
@@ -13,15 +17,96 @@ func free(offset uint32) {
 }
 
 // bytesToLeakedPtr converts a byte slice to an offset and size pair.
-func bytesToLeakedPtr(data []byte) (offset uint32, size uint32) {
-	return dataToLeakedPtr(data)
-}
-
-// dataToLeakedPtr converts a byte slice to an offset and size pair.
 // It allocates memory of size 'len(data)' and copies the data into this memory.
 // It returns the offset to the allocated memory and the size of the data.
-func dataToLeakedPtr(data []byte) (offset uint32, size uint32) {
-	ptr := unsafe.Pointer(C.malloc(C.ulong(len(data))))
-	copy(unsafe.Slice((*byte)(ptr), C.ulong(len(data))), data)
-	return uint32(uintptr(ptr)), uint32(len(data))
+func bytesToLeakedPtr(data []byte, offsetSize uint32) (offset uint32) {
+	ptr := unsafe.Pointer(C.malloc(C.ulong(offsetSize)))
+	copy(unsafe.Slice((*byte)(ptr), C.ulong(offsetSize)), data)
+	return uint32(uintptr(ptr))
+}
+
+// byteToLeakedPtr allocates memory for a byte (uint8) and stores the value in that memory.
+// It returns the offset to the allocated memory.
+func byteToLeakedPtr(data byte) (offset uint32) {
+	ptr := unsafe.Pointer(C.malloc(1))
+	*(*byte)(ptr) = data
+
+	return uint32(uintptr(ptr))
+}
+
+// uint32ToLeakedPtr allocates memory for a uint32 and stores the value in that memory.
+// It returns the offset to the allocated memory.
+func uint32ToLeakedPtr(data uint32) (offset uint32) {
+	ptr := unsafe.Pointer(C.malloc(4))
+	*(*uint32)(ptr) = data
+
+	return uint32(uintptr(ptr))
+}
+
+// uint64ToLeakedPtr allocates memory for a uint64 and stores the value in that memory.
+// It returns the offset to the allocated memory.
+func uint64ToLeakedPtr(data uint64) (offset uint32) {
+	ptr := unsafe.Pointer(C.malloc(4))
+	*(*uint64)(ptr) = data
+
+	return uint32(uintptr(ptr))
+}
+
+// float32ToLeakedPtr allocates memory for a float32 and stores the value in that memory.
+// It returns the offset to the allocated memory.
+func float32ToLeakedPtr(data float32) (offset uint32) {
+	ptr := unsafe.Pointer(C.malloc(4))
+	*(*float32)(ptr) = data
+
+	return uint32(uintptr(ptr))
+}
+
+// float64ToLeakedPtr allocates memory for a float64 and stores the value in that memory.
+// It returns the offset to the allocated memory.
+func float64ToLeakedPtr(data float64) (offset uint32) {
+	ptr := unsafe.Pointer(C.malloc(4))
+	*(*float64)(ptr) = data
+
+	return uint32(uintptr(ptr))
+}
+
+// stringToLeakedPtr allocates memory for a string and stores the value in that memory.
+// It returns the offset to the allocated memory.
+func stringToLeakedPtr(data string, offsetSize uint32) (offset uint32) {
+	byteSlice := unsafe.Slice(unsafe.StringData(data), len(data))
+	return bytesToLeakedPtr(byteSlice, offsetSize)
+}
+
+// GetOffsetSizeAndDataTypeByConversion determines the memory size (offsetSize) and ValueType
+// of a given data. The function supports several data types.
+func GetOffsetSizeAndDataTypeByConversion(data any) (dataType ValueType, offsetSize uint32, err error) {
+
+	switch vTyped := data.(type) {
+	case []byte:
+		offsetSize = uint32(len(vTyped))
+		dataType = ValueTypeBytes
+	case byte:
+		offsetSize = 1
+		dataType = ValueTypeByte
+	case uint32:
+		offsetSize = 4
+		dataType = ValueTypeI32
+	case uint64:
+		offsetSize = 8
+		dataType = ValueTypeI64
+	case float32:
+		offsetSize = 4
+		dataType = ValueTypeF32
+	case float64:
+		offsetSize = 8
+		dataType = ValueTypeF64
+	case string:
+		offsetSize = uint32(len(vTyped))
+		dataType = ValueTypeString
+	default:
+		err = fmt.Errorf("unsupported conversion data type %s", reflect.TypeOf(vTyped))
+		return
+	}
+
+	return dataType, offsetSize, err
 }

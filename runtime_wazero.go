@@ -5,6 +5,7 @@ package wasify
 import (
 	"context"
 	"errors"
+	"os"
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
@@ -65,14 +66,14 @@ func (r *wazeroRuntime) NewModule(ctx context.Context, moduleConfig *ModuleConfi
 		actualHash, err := calculateHash(moduleConfig.Wasm.Binary)
 		if err != nil {
 			err = errors.Join(errors.New("can't calculate the hash"), err)
-			moduleConfig.log.Warn(err.Error(), "module", moduleConfig.Name, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
+			moduleConfig.log.Warn(err.Error(), "module", moduleConfig.Namespace, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
 			return nil, err
 		}
-		moduleConfig.log.Info("hash calculation", "module", moduleConfig.Name, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
+		moduleConfig.log.Info("hash calculation", "module", moduleConfig.Namespace, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
 
 		err = compareHashes(actualHash, moduleConfig.Wasm.Hash)
 		if err != nil {
-			moduleConfig.log.Warn(err.Error(), "module", moduleConfig.Name, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
+			moduleConfig.log.Warn(err.Error(), "module", moduleConfig.Namespace, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
 			return nil, err
 		}
 	}
@@ -80,22 +81,22 @@ func (r *wazeroRuntime) NewModule(ctx context.Context, moduleConfig *ModuleConfi
 	// Instantiate host functions and configure wazeroModule accordingly.
 	err := r.instantiateHostFunctions(ctx, wazeroModule, moduleConfig)
 	if err != nil {
-		moduleConfig.log.Error(err.Error(), "module", moduleConfig.Name)
-		r.log.Error(err.Error(), "runtime", r.Runtime, "module", moduleConfig.Name)
+		moduleConfig.log.Error(err.Error(), "module", moduleConfig.Namespace)
+		r.log.Error(err.Error(), "runtime", r.Runtime, "module", moduleConfig.Namespace)
 		return nil, err
 	}
 
-	moduleConfig.log.Info("host functions has been instantiated successfully", "module", moduleConfig.Name)
+	moduleConfig.log.Info("host functions has been instantiated successfully", "module", moduleConfig.Namespace)
 
 	// Instantiate the module and set it in wazeroModule.
 	mod, err := r.instantiateModule(ctx, moduleConfig)
 	if err != nil {
-		moduleConfig.log.Error(err.Error(), "module", moduleConfig.Name)
-		r.log.Error(err.Error(), "runtime", r.Runtime, "module", moduleConfig.Name)
+		moduleConfig.log.Error(err.Error(), "module", moduleConfig.Namespace)
+		r.log.Error(err.Error(), "runtime", r.Runtime, "module", moduleConfig.Namespace)
 		return nil, err
 	}
 
-	moduleConfig.log.Info("module has been instantiated successfully", "module", moduleConfig.Name)
+	moduleConfig.log.Info("module has been instantiated successfully", "module", moduleConfig.Namespace)
 
 	wazeroModule.mod = mod
 
@@ -110,18 +111,14 @@ func (r *wazeroRuntime) NewModule(ctx context.Context, moduleConfig *ModuleConfi
 func (r *wazeroRuntime) convertToAPIValueTypes(types []ValueType) []api.ValueType {
 	valueTypes := make([]api.ValueType, len(types))
 	for i, t := range types {
-
 		switch t {
-		case ValueTypeByte:
+		case
+			ValueTypeBytes,
+			ValueTypeI32,
+			ValueTypeI64,
+			ValueTypeF32,
+			ValueTypeF64:
 			valueTypes[i] = api.ValueTypeI64
-			// case ValueTypeI32:
-			// 	valueTypes[i] = api.ValueTypeI32
-			// case ValueTypeI64:
-			// 	valueTypes[i] = api.ValueTypeI64
-			// case ValueTypeF32:
-			// 	valueTypes[i] = api.ValueTypeF32
-			// case ValueTypeF64:
-			// 	valueTypes[i] = api.ValueTypeF64
 		}
 	}
 
@@ -133,10 +130,20 @@ func (r *wazeroRuntime) convertToAPIValueTypes(types []ValueType) []api.ValueTyp
 // It configures host function callbacks, value types, and exports.
 func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModule *wazeroModule, moduleConfig *ModuleConfig) error {
 
-	modBuilder := r.runtime.NewHostModuleBuilder(moduleConfig.Name)
+	modBuilder := r.runtime.NewHostModuleBuilder(moduleConfig.Namespace)
 
 	// Iterate over the module's host functions and set up exports.
-	for _, hf := range moduleConfig.HostFunctions {
+	for _, hostFunc := range moduleConfig.HostFunctions {
+
+		// Create a new local variable inside the loop to ensure that
+		// each closure captures its own unique variable. This prevents
+		// the inadvertent capturing of the loop iterator variable, which
+		// would result in all closures referencing the last element
+		// in the moduleConfig.HostFunctions slice.
+		hf := hostFunc
+
+		moduleConfig.log.Debug("build host function", "function", hf.Name, "module", moduleConfig.Namespace)
+
 		// Associate the host function with module-related information.
 		// This configuration ensures that the host function can access ModuleConfig data from various contexts.
 		// Additionally, we set up an allocationMap specific to the host function, creating a map that stores
@@ -148,15 +155,20 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 		hf.moduleConfig = moduleConfig
 		hf.allocationMap = newAllocationMap[uint32, uint32]()
 
-		moduleConfig.log.Debug("exporting host function", "function", hf.Name, "module", moduleConfig.Name)
+		// If hsot function has any return values, we pack it as a single uint64
+		var returnValuesPackedData = []ValueType{}
+		if len(hf.Returns) > 0 {
+			returnValuesPackedData = []ValueType{ValueTypeI64}
+		}
 
 		modBuilder = modBuilder.
 			NewFunctionBuilder().
 			WithGoModuleFunction(api.GoModuleFunc(wazeroHostFunctionCallback(wazeroModule, moduleConfig, &hf)),
 				r.convertToAPIValueTypes(hf.Params),
-				r.convertToAPIValueTypes([]ValueType{ValueTypeByte}),
+				r.convertToAPIValueTypes(returnValuesPackedData),
 			).
 			Export(hf.Name)
+
 	}
 
 	// Instantiate user defined host functions
@@ -167,7 +179,7 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 	}
 
 	// NewHostModuleBuilder for wasify pre-defined host functions
-	modBuilder = r.runtime.NewHostModuleBuilder(MDK_ENV)
+	modBuilder = r.runtime.NewHostModuleBuilder(WASIFY_NAMESPACE)
 
 	// initialize pre-defined host functions and pass any necessary configurations
 	hf := newHostFunctions(moduleConfig)
@@ -208,6 +220,9 @@ func (r *wazeroRuntime) instantiateModule(ctx context.Context, moduleConfig *Mod
 
 	// TODO: Add more configurations
 	cfg := wazero.NewModuleConfig()
+
+	// FIXME: Remove below line later
+	cfg = cfg.WithStdin(os.Stdin).WithStderr(os.Stderr).WithStdout(os.Stdout)
 
 	if moduleConfig != nil && moduleConfig.FSConfig.Enabled {
 		cfg = cfg.WithFSConfig(

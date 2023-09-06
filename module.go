@@ -13,8 +13,8 @@ type Module interface {
 
 type ModuleProxy interface {
 	GuestFunction(ctx context.Context, functionName string) GuestFunction
-	Read(packedData uint64) (offset uint32, size uint32, data []byte, err error)
-	Write(offset uint32, data []byte) error
+	Read(packedData uint64) (offset uint32, size uint32, data any, err error)
+	Write(offset uint32, data any) error
 	Free(offset uint32) error
 	Malloc(size uint32) (offset uint32, err error)
 	Size() uint32
@@ -26,16 +26,16 @@ type GuestFunction interface {
 }
 
 type Memory interface {
-	Read(packedData uint64) (offset uint32, size uint32, data []byte, err error)
-	Write(offset uint32, data []byte) error
+	Read(packedData uint64) (offset uint32, size uint32, data any, err error)
+	Write(offset uint32, data any) error
 	Free(offset uint32) error
 	Size() uint32
 	Malloc(size uint32) (uint32, error)
 }
 
 type ModuleConfig struct {
-	// Module name. Required.
-	Name string
+	// Module Namespace. Required.
+	Namespace string
 
 	// FSConfig configures a directory to be pre-opened for access by the WASI module if Enabled is set to true.
 	// If GuestDir is not provided, the default guest directory will be "/".

@@ -10,21 +10,21 @@ func Log(format string, a ...any) {
 }
 
 func LogDebug(format string, a ...any) {
-	slog(format, "1", a...)
+	slog(format, 1, a...)
 }
 
 func LogInfo(format string, a ...any) {
-	slog(format, "2", a...)
+	slog(format, 2, a...)
 }
 
 func LogWarning(format string, a ...any) {
-	slog(format, "3", a...)
+	slog(format, 3, a...)
 }
 
 func LogError(format string, a ...any) {
-	slog(format, "4", a...)
+	slog(format, 4, a...)
 }
 
-func slog(format string, lvl string, a ...any) {
+func slog(format string, lvl byte, a ...any) {
 	log(Arg(fmt.Sprintf(format, a...)), Arg(lvl))
 }
