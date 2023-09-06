@@ -34,8 +34,8 @@ type Memory interface {
 }
 
 type ModuleConfig struct {
-	// Module name. Required.
-	Name string
+	// Module Namespace. Required.
+	Namespace string
 
 	// FSConfig configures a directory to be pre-opened for access by the WASI module if Enabled is set to true.
 	// If GuestDir is not provided, the default guest directory will be "/".

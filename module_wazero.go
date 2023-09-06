@@ -45,7 +45,7 @@ func (m *wazeroModule) GuestFunction(ctx context.Context, name string) GuestFunc
 
 	fn := m.mod.ExportedFunction(name)
 	if fn == nil {
-		m.log.Warn("exported function does not exist", "function", name, "module", m.Name)
+		m.log.Warn("exported function does not exist", "function", name, "module", m.Namespace)
 	}
 
 	return &wazeroGuestFunction{ctx, fn, name, m.ModuleConfig}
@@ -66,8 +66,8 @@ type wazeroGuestFunction struct {
 // which could lead to excessive log entries and complicate debugging for host funcs.
 func (gf *wazeroGuestFunction) Invoke(params ...uint64) ([]uint64, error) {
 
-	if gf.name != "malloc" && gf.name != "free" {
-		gf.log.Info("calling function", "name", gf.name, "module", gf.Name, "params", params)
+	if gf.Namespace != "malloc" && gf.Namespace != "free" {
+		gf.log.Info("calling function", "name", gf.Namespace, "module", gf.Namespace, "params", params)
 	}
 
 	// TODO: Use CallWithStack
