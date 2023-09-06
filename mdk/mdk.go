@@ -1,6 +1,7 @@
 package mdk
 
 import (
+	"fmt"
 	"runtime"
 	"unsafe"
 )
@@ -35,25 +36,21 @@ const (
 // This function is particularly useful for passing data to host functions,
 // as it handles the necessary conversions and memory allocations.
 //
-// The runtime.KeepAlive call is used to ensure that the 'data' object is not garbage collected
+// The runtime.KeepAlive call is used to ensure that the 'value' object is not garbage collected
 // until the function finishes execution.
 //
 // ⚠️ Note: The ArgOffset returned by the Arg function does not need to be manually deallocated.
 // The memory management is handled on the host side, where the allocated memory is automatically deallocated.
-func Arg(data any) ArgOffset {
-	var b []byte
-	switch v := data.(type) {
-	case string:
-		b = []byte(v)
-	case []byte:
-		b = v
-	default:
-		panic("unsupported data type")
+func Arg(value any) ArgOffset {
+
+	runtime.KeepAlive(value)
+
+	packedData, err := Alloc(value)
+	if err != nil {
+		panic(err)
 	}
 
-	runtime.KeepAlive(b)
-
-	return ArgOffset(Alloc(b))
+	return ArgOffset(packedData)
 }
 
 // Results converts a packed result offset into a slice of Result structs.
@@ -72,7 +69,7 @@ func Results(resultsOffset ResultOffset) []Result {
 	t, offset, size := UnpackUI64(uint64(resultsOffset))
 
 	if ValueType(t) != valueTypePack {
-		panic("can't unpack data, value type is not type of valueTypePack")
+		panic(fmt.Sprintf("can't unpack data, value type is not type of valueTypePack. expected %d, got %d", valueTypePack, t))
 	}
 
 	// calculate the number of elements in the array
@@ -112,12 +109,52 @@ func Results(resultsOffset ResultOffset) []Result {
 	return data
 }
 
-// Alloc allocates memory for a byte slice and returns a uint64
-// that packs the pointer to the allocated memory and the size of the byte slice.
-// This function is useful for passing byte slices to WebAssembly functions.
-func Alloc(data []byte) uint64 {
-	offset, size := bytesToLeakedPtr(data)
-	return PackUI64(uint8(valueTypePack), offset, size)
+// Alloc allocates memory for a byte slice and then returns a uint64 value
+//
+// Note: Users should note that the size of the byte slice should not exceed what can
+// be represented in 24 bits (i.e., larger than 16,777,215 bytes), as this would
+// cause a panic in the PackUI64 function.
+func Alloc(data any) (uint64, error) {
+
+	dataType, offsetSize, err := GetOffsetSizeAndDataTypeByConversion(data)
+	if err != nil {
+		return 0, err
+	}
+
+	var offset uint32
+
+	switch dataType {
+	case ValueTypeBytes:
+		offset = AllocBytes(data.([]byte), offsetSize)
+	case ValueTypeI32:
+		offset = AllocUint32Le(data.(uint32))
+	case ValueTypeI64:
+		offset = AllocUint64Le(data.(uint64))
+	case ValueTypeF32:
+		offset = AllocFloat32Le(data.(float32))
+	case ValueTypeF64:
+		offset = AllocFloat64Le(data.(float64))
+	default:
+		return 0, fmt.Errorf("unsupported data type %d for allocation", dataType)
+	}
+
+	return PackUI64(uint8(dataType), offset, offsetSize)
+}
+
+func AllocBytes(data []byte, offsetSize uint32) uint32 {
+	return bytesToLeakedPtr(data, offsetSize)
+}
+func AllocUint32Le(data uint32) uint32 {
+	return uint32ToLeakedPtr(data)
+}
+func AllocUint64Le(data uint64) uint32 {
+	return uint64ToLeakedPtr(data)
+}
+func AllocFloat32Le(data float32) uint32 {
+	return float32ToLeakedPtr(data)
+}
+func AllocFloat64Le(data float64) uint32 {
+	return float64ToLeakedPtr(data)
 }
 
 // FreeMemory frees the memory allocated by the AllocateString or AllocateBytes functions.
@@ -137,16 +174,16 @@ func Free(packedData uint64) {
 // - Lowest 24 bits: size
 //
 // This function will panic if the provided size is larger than what can be represented in 24 bits (i.e., larger than 16,777,215).
-func PackUI64(dataType uint8, ptr uint32, size uint32) (packedData uint64) {
+func PackUI64(dataType uint8, ptr uint32, size uint32) (uint64, error) {
 	// Check if the size can be represented in 24 bits
 	if size >= (1 << 24) {
-		panic("Size exceeds 24 bits precision")
+		return 0, fmt.Errorf("Size %d exceeds 24 bits precision %d", size, (1 << 24))
 	}
 
 	// Shift the dataType into the highest 8 bits
 	// Shift the ptr (offset) into the next 32 bits
 	// Use the size as is, but ensure only the lowest 24 bits are used (using bitwise AND)
-	return (uint64(dataType) << 56) | (uint64(ptr) << 24) | uint64(size&0xFFFFFF)
+	return (uint64(dataType) << 56) | (uint64(ptr) << 24) | uint64(size&0xFFFFFF), nil
 }
 
 // UnpackUI64 reverses the operation done by PackUI64.

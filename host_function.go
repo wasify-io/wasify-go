@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/wasify-io/wasify-go/mdk"
 )
@@ -33,7 +32,7 @@ type Param struct {
 	Size uint32
 
 	// Actual data value, passed from guest function as an argument.
-	Value []byte
+	Value any
 }
 type Params []Param
 
@@ -94,8 +93,11 @@ func (hf *HostFunction) convertParamsToStruct(ctx context.Context, m ModuleProxy
 
 	params := make(Params, len(hf.Params))
 
-	for i, packedData := range stackParams {
-		offset, offsetSize, data, err := m.Read(packedData)
+	for i := range hf.Params {
+
+		packedData := &stackParams[i]
+
+		offset, offsetSize, data, err := m.Read(*packedData)
 		if err != nil {
 			err = errors.Join(errors.New("can't read params packed data"), err)
 			return nil, err
@@ -164,6 +166,12 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 		return nil, nil, nil
 	}
 
+	fmt.Println("FUNC: ", hf.Name)
+
+	if len(*results) != len(hf.Returns) {
+		return nil, nil, fmt.Errorf("return value missmatch %d != %d", len(*results), len(hf.Returns))
+	}
+
 	// First, allocate memory for each byte slice and store the offsets in a slice
 	packedDatas := make([]uint64, len(*results))
 
@@ -173,10 +181,14 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	for i, returnValue := range *results {
 
 		// get offset size and result value type (ValueType) by result's returnValue
-		offsetSize, valueType, err := getOffsetSizeAndValueTypeByConversion(returnValue)
+		valueType, offsetSize, err := mdk.GetOffsetSizeAndDataTypeByConversion(returnValue)
 		if err != nil {
 			err = errors.Join(errors.New("can't convert result"), err)
 			return nil, nil, err
+		}
+
+		if mdk.ValueType(valueType) != mdk.ValueType(hf.Returns[i]) {
+			return nil, nil, fmt.Errorf("return value does not match actual value %d != %d", valueType, hf.Returns[i])
 		}
 
 		// allocate memory for each value
@@ -187,6 +199,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 		}
 
 		returnOffsets[offset] = offsetSize
+
 		// Add offset and offset size in the hsot function's allocationMap
 		// for later cleanup.
 		hf.allocationMap.store(offset, offsetSize)
@@ -198,7 +211,10 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 		}
 
 		// Pack the offset and size into a single uint64
-		packedDatas[i] = mdk.PackUI64(uint8(valueType), offset, offsetSize)
+		packedDatas[i], err = mdk.PackUI64(uint8(valueType), offset, offsetSize)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// Then, allocate memory for the array of packed offsets and sizes
@@ -221,7 +237,10 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	}
 
 	// Final packed data, which contains offset and size of packedDatas slice
-	packedData := mdk.PackUI64(valueTypePack, offset, offsetSize)
+	packedData, err := mdk.PackUI64(valueTypePack, offset, offsetSize)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// Store final packedData into linear memory
 	stackParams[0] = packedData
@@ -273,32 +292,4 @@ func (hf *HostFunction) cleanup(m ModuleProxy, params Params, returnOffsets map[
 		"module", hf.moduleConfig.Name)
 
 	return nil
-}
-
-// getOffsetSizeAndValueTypeByConversion determines the memory size (offsetSize) and ValueType
-// of a given returnValue. The function supports several data types.
-func getOffsetSizeAndValueTypeByConversion(returnValue any) (offsetSize uint32, valueType ValueType, err error) {
-
-	switch vTyped := returnValue.(type) {
-	case []byte:
-		offsetSize = uint32(len(vTyped))
-		valueType = ValueTypeBytes
-	case uint32:
-		offsetSize = 4
-		valueType = ValueTypeI32
-	case uint64:
-		offsetSize = 4
-		valueType = ValueTypeI64
-	case float32:
-		offsetSize = 4
-		valueType = ValueTypeF32
-	case float64:
-		offsetSize = 4
-		valueType = ValueTypeF64
-	default:
-		err = fmt.Errorf("unsupported value type %s", reflect.TypeOf(returnValue))
-		return
-	}
-
-	return offsetSize, valueType, err
 }

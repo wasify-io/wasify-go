@@ -90,6 +90,7 @@ type wazeroMemory struct {
 	*wazeroModule
 }
 
+// TODO: Update Comment
 // Read reads byteCount bytes from the underlying buffer at the offset or
 //
 // It unpacks the packedData to obtain offset and size information, then reads
@@ -97,24 +98,90 @@ type wazeroMemory struct {
 // Returns the offset, size, read data, and any potential error like if out of range.
 // Packed data is a uint64 where the first 32 bits represent the offset
 // and the following 32 bits represent the size of the actual data to be read.
-func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, []byte, error) {
+func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, any, error) {
 
 	var err error
+	var data any
 
 	// Unpack the packedData to extract offset and size values.
-	// TODO: read by data type
-	_, offset, size := mdk.UnpackUI64(packedData)
+	t, offset, size := mdk.UnpackUI64(packedData)
 
-	// Read data from memory using the extracted offset and size.
-	buf, ok := m.mod.Memory().Read(offset, size)
+	switch ValueType(t) {
+	case ValueTypeBytes:
+		data, err = m.ReadBytes(offset, size)
+	case ValueTypeI32:
+		data, err = m.ReadUint32Le(offset)
+	case ValueTypeI64:
+		data, err = m.ReadUint64Le(offset)
+	case ValueTypeF32:
+		data, err = m.ReadFloat32Le(offset)
+	case ValueTypeF64:
+		data, err = m.ReadFloat64Le(offset)
+	default:
+		err = fmt.Errorf("Unsupported read data type %d", t)
+	}
 
-	if !ok {
-		err = fmt.Errorf("Memory.Read(%d, %d) out of range of memory size %d", offset, size, m.Size())
+	if err != nil {
 		m.log.Error(err.Error())
 		return 0, 0, nil, err
 	}
 
-	return offset, size, buf, err
+	return offset, size, data, err
+}
+
+func (m *wazeroMemory) ReadBytes(offset uint32, size uint32) ([]byte, error) {
+	buf, ok := m.mod.Memory().Read(offset, size)
+	if !ok {
+		err := fmt.Errorf("Memory.ReadBytes(%d, %d) out of range of memory size %d", offset, size, m.Size())
+		m.log.Error(err.Error())
+		return nil, err
+	}
+
+	return buf, nil
+}
+
+func (m *wazeroMemory) ReadUint32Le(offset uint32) (uint32, error) {
+	data, ok := m.mod.Memory().ReadUint32Le(offset)
+	if !ok {
+		err := fmt.Errorf("Memory.ReadUint32Le(%d, %d) out of range of memory size %d", offset, 4, m.Size())
+		m.log.Error(err.Error())
+		return 0, err
+	}
+
+	return data, nil
+}
+
+func (m *wazeroMemory) ReadUint64Le(offset uint32) (uint64, error) {
+	data, ok := m.mod.Memory().ReadUint64Le(offset)
+	if !ok {
+		err := fmt.Errorf("Memory.ReadUint64Le(%d, %d) out of range of memory size %d", offset, 8, m.Size())
+		m.log.Error(err.Error())
+		return 0, err
+	}
+
+	return data, nil
+}
+
+func (m *wazeroMemory) ReadFloat32Le(offset uint32) (float32, error) {
+	data, ok := m.mod.Memory().ReadFloat32Le(offset)
+	if !ok {
+		err := fmt.Errorf("Memory.ReadFloat32Le(%d, %d) out of range of memory size %d", offset, 4, m.Size())
+		m.log.Error(err.Error())
+		return 0, err
+	}
+
+	return data, nil
+}
+
+func (m *wazeroMemory) ReadFloat64Le(offset uint32) (float64, error) {
+	data, ok := m.mod.Memory().ReadFloat64Le(offset)
+	if !ok {
+		err := fmt.Errorf("Memory.ReadFloat64Le(%d, %d) out of range of memory size %d", offset, 8, m.Size())
+		m.log.Error(err.Error())
+		return 0, err
+	}
+
+	return data, nil
 }
 
 // Write writes the provided value (v) to the memory buffer managed by the wazeroMemory instance,
@@ -270,7 +337,7 @@ type wazeroModuleProxy struct {
 func (mp *wazeroModuleProxy) GuestFunction(ctx context.Context, name string) GuestFunction {
 	return mp.wazeroModule.GuestFunction(ctx, name)
 }
-func (mp *wazeroModuleProxy) Read(packedData uint64) (uint32, uint32, []byte, error) {
+func (mp *wazeroModuleProxy) Read(packedData uint64) (uint32, uint32, any, error) {
 	return mp.wazeroModule.Memory().Read(packedData)
 }
 func (mp *wazeroModuleProxy) Write(offset uint32, data any) error {

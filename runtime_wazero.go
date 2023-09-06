@@ -142,6 +142,8 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 		// in the moduleConfig.HostFunctions slice.
 		hf := hostFunc
 
+		moduleConfig.log.Debug("build host function", "function", hf.Name, "module", moduleConfig.Name)
+
 		// Associate the host function with module-related information.
 		// This configuration ensures that the host function can access ModuleConfig data from various contexts.
 		// Additionally, we set up an allocationMap specific to the host function, creating a map that stores
@@ -150,17 +152,20 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 		// We use allocationMap operations for Params provided in host function and Returns, which originally
 		// should be freed up.
 		// See host_function.go for more details.
-
 		hf.moduleConfig = moduleConfig
 		hf.allocationMap = newAllocationMap[uint32, uint32]()
 
-		moduleConfig.log.Debug("exporting host function", "function", hf.Name, "module", moduleConfig.Name)
+		// If hsot function has any return values, we pack it as a single uint64
+		var returnValuesPackedData = []ValueType{}
+		if len(hf.Returns) > 0 {
+			returnValuesPackedData = []ValueType{ValueTypeI64}
+		}
 
 		modBuilder = modBuilder.
 			NewFunctionBuilder().
 			WithGoModuleFunction(api.GoModuleFunc(wazeroHostFunctionCallback(wazeroModule, moduleConfig, &hf)),
 				r.convertToAPIValueTypes(hf.Params),
-				r.convertToAPIValueTypes([]ValueType{ValueTypeI64}),
+				r.convertToAPIValueTypes(returnValuesPackedData),
 			).
 			Export(hf.Name)
 
