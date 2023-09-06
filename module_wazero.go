@@ -90,23 +90,25 @@ type wazeroMemory struct {
 	*wazeroModule
 }
 
-// TODO: Update Comment
-// Read reads byteCount bytes from the underlying buffer at the offset or
+// Read extracts and reads data from a packed memory location.
 //
-// It unpacks the packedData to obtain offset and size information, then reads
-// data from the memory at the specified offset and size.
-// Returns the offset, size, read data, and any potential error like if out of range.
-// Packed data is a uint64 where the first 32 bits represent the offset
-// and the following 32 bits represent the size of the actual data to be read.
+// Given a packed data representation, this function determines the type, offset, and size of the data to be read.
+// It then reads the data from the specified offset and returns it.
+//
+// Returns:
+// - offset: The memory location where the data starts.
+// - size: The size or length of the data.
+// - data: The actual extracted data of the determined type (i.e., byte slice, uint32, uint64, float32, float64).
+// - error: An error if encountered (e.g., unsupported data type, out-of-range error).
 func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, any, error) {
 
 	var err error
 	var data any
 
 	// Unpack the packedData to extract offset and size values.
-	t, offset, size := mdk.UnpackUI64(packedData)
+	valueType, offset, size := mdk.UnpackUI64(packedData)
 
-	switch ValueType(t) {
+	switch ValueType(valueType) {
 	case ValueTypeBytes:
 		data, err = m.ReadBytes(offset, size)
 	case ValueTypeI32:
@@ -118,7 +120,7 @@ func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, any, error) {
 	case ValueTypeF64:
 		data, err = m.ReadFloat64Le(offset)
 	default:
-		err = fmt.Errorf("Unsupported read data type %d", t)
+		err = fmt.Errorf("Unsupported read data type %d", valueType)
 	}
 
 	if err != nil {
@@ -184,10 +186,10 @@ func (m *wazeroMemory) ReadFloat64Le(offset uint32) (float64, error) {
 	return data, nil
 }
 
-// Write writes the provided value (v) to the memory buffer managed by the wazeroMemory instance,
-// starting at the specified offset.
-// If the type of v is unsupported, or if the operation attempts to write out of the buffer's range,
-// an error will be returned.
+// Write writes a value of type interface{} to the memory buffer managed by the wazeroMemory instance,
+// starting at the given offset.
+//
+// The method identifies the type of the value and performs the appropriate write operation.
 func (m *wazeroMemory) Write(offset uint32, v any) error {
 	var err error
 
@@ -280,21 +282,6 @@ func (r *wazeroMemory) Size() uint32 {
 // Malloc allows memory allocation from within a host function or externally,
 // returning the allocated memory offset to be used in a guest function.
 // This can be helpful, for instance, when passing string data from the host to the guest.
-//
-// Note: Always make sure to free memory after allocation.
-//
-// Example usage:
-//
-//	text := "Wasify.io"
-//	size := uint32(len(text))
-//	offset, err := module.Memory().Malloc(size)
-//	res, _ := module.GuestFunction(ctx, "guest_function_name").Invoke(offset)
-//	_, _, data, _ := module.Memory().Read(res[0])
-//	if err != nil {
-//		panic(err)
-//	}
-//
-// fmt.Println("DATA: ", string(data))
 //
 // Note: Always make sure to free memory after allocation.
 func (m *wazeroMemory) Malloc(size uint32) (uint32, error) {

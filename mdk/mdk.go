@@ -6,21 +6,26 @@ import (
 	"unsafe"
 )
 
+// ArgOffset represents an offset into WebAssembly memory that refers to an argument's location.
+// This packed representation consists of a memory offset and the size of the argument data.
 type ArgOffset uint64
+
+// ResultOffset represents an offset into WebAssembly memory for function results.
 type ResultOffset uint64
 
+// Result is a structure that contains a size and a generic data representation for function results.
 type Result struct {
 	Size uint32
 	Data any
 }
 
-// ValueType represents the type of value used in function parameters and returns.
+// ValueType is an enumeration of supported data types for function parameters and returns.
 type ValueType uint8
 
-// reserved value type for packedData
+// valueTypePack is a reserved ValueType used for packed data.
 const valueTypePack ValueType = 255
 
-// supported value types in params and returns
+// These constants represent the possible data types that can be used in function parameters and returns.
 const (
 	ValueTypeBytes ValueType = iota
 	ValueTypeI32
@@ -29,12 +34,9 @@ const (
 	ValueTypeF64
 )
 
-// Arg is a utility function that converts data of type 'any' into an ArgOffset,
-// which is a packed representation of the pointer to the allocated memory and the size of the data.
-// Currently, it only supports data of type 'string' or '[]byte'.
-// For other data types, it will panic with 'unsupported data type'.
-// This function is particularly useful for passing data to host functions,
-// as it handles the necessary conversions and memory allocations.
+// Arg prepares data for passing as an argument to a host function in WebAssembly.
+// It accepts a generic data input and returns an ArgOffset which packs the memory offset and size of the data.
+// This function abstracts away the complexity of memory management and conversion for the user.
 //
 // The runtime.KeepAlive call is used to ensure that the 'value' object is not garbage collected
 // until the function finishes execution.
@@ -43,23 +45,19 @@ const (
 // The memory management is handled on the host side, where the allocated memory is automatically deallocated.
 func Arg(value any) ArgOffset {
 
-	runtime.KeepAlive(value)
-
 	packedData, err := Alloc(value)
 	if err != nil {
 		panic(err)
 	}
 
+	runtime.KeepAlive(value)
+
 	return ArgOffset(packedData)
 }
 
-// Results converts a packed result offset into a slice of Result structs.
-//
-// Each Result struct in the slice contains the size of the data and a slice of bytes representing the data.
-// The resultsOffset is an unsigned integer that packs a pointer to the allocated memory and the size of the byte slice.
-// The function unpacks this offset into the actual memory offset and size, then iterates over the packed data,
-// unpacking each element into a Result struct and storing it in a slice of Results.
-// Finally, the function returns the slice of Results.
+// Results unpacks and returns the results of a host function in WebAssembly.
+// It takes a ResultOffset, which contains packed memory offsets, and returns a slice of Result structs.
+// This utility helps in reading the data returned by WebAssembly functions without dealing with the intricacies of memory offsets.
 func Results(resultsOffset ResultOffset) []Result {
 
 	if resultsOffset == 0 {
@@ -68,7 +66,7 @@ func Results(resultsOffset ResultOffset) []Result {
 
 	t, offset, size := UnpackUI64(uint64(resultsOffset))
 
-	if ValueType(t) != valueTypePack {
+	if t != valueTypePack {
 		panic(fmt.Sprintf("can't unpack data, value type is not type of valueTypePack. expected %d, got %d", valueTypePack, t))
 	}
 
@@ -82,11 +80,11 @@ func Results(resultsOffset ResultOffset) []Result {
 
 	// Iterate over the packedData, unpack and read data of each element into a Result
 	for i, pd := range packedData {
-		t, offset, size := UnpackUI64(pd)
+		valueType, offset, size := UnpackUI64(pd)
 
 		var value any
 
-		switch ValueType(t) {
+		switch valueType {
 		case ValueTypeBytes:
 			value = unsafe.Slice((*byte)(unsafe.Pointer(uintptr(offset))), size)
 		case ValueTypeI32:
@@ -109,11 +107,8 @@ func Results(resultsOffset ResultOffset) []Result {
 	return data
 }
 
-// Alloc allocates memory for a byte slice and then returns a uint64 value
-//
-// Note: Users should note that the size of the byte slice should not exceed what can
-// be represented in 24 bits (i.e., larger than 16,777,215 bytes), as this would
-// cause a panic in the PackUI64 function.
+// Alloc prepares data for interaction with WebAssembly by allocating the necessary memory.
+// It accepts a generic input and returns a uint64 value that combines the memory offset and size.
 func Alloc(data any) (uint64, error) {
 
 	dataType, offsetSize, err := GetOffsetSizeAndDataTypeByConversion(data)
@@ -138,7 +133,7 @@ func Alloc(data any) (uint64, error) {
 		return 0, fmt.Errorf("unsupported data type %d for allocation", dataType)
 	}
 
-	return PackUI64(uint8(dataType), offset, offsetSize)
+	return PackUI64(dataType, offset, offsetSize)
 }
 
 func AllocBytes(data []byte, offsetSize uint32) uint32 {
@@ -174,7 +169,7 @@ func Free(packedData uint64) {
 // - Lowest 24 bits: size
 //
 // This function will panic if the provided size is larger than what can be represented in 24 bits (i.e., larger than 16,777,215).
-func PackUI64(dataType uint8, ptr uint32, size uint32) (uint64, error) {
+func PackUI64(dataType ValueType, ptr uint32, size uint32) (uint64, error) {
 	// Check if the size can be represented in 24 bits
 	if size >= (1 << 24) {
 		return 0, fmt.Errorf("Size %d exceeds 24 bits precision %d", size, (1 << 24))
@@ -188,9 +183,9 @@ func PackUI64(dataType uint8, ptr uint32, size uint32) (uint64, error) {
 
 // UnpackUI64 reverses the operation done by PackUI64.
 // Given a packed uint64, it will extract and return the original dataType, offset (ptr), and size.
-func UnpackUI64(packedData uint64) (dataType uint8, offset uint32, size uint32) {
+func UnpackUI64(packedData uint64) (dataType ValueType, offset uint32, size uint32) {
 	// Extract the dataType from the highest 8 bits
-	dataType = uint8(packedData >> 56)
+	dataType = ValueType(packedData >> 56)
 
 	// Extract the offset (ptr) from the next 32 bits using bitwise AND to mask the other bits
 	offset = uint32((packedData >> 24) & 0xFFFFFFFF)

@@ -9,18 +9,18 @@ import (
 )
 
 // ValueType represents the type of value used in function parameters and returns.
-type ValueType uint8
+type ValueType mdk.ValueType
 
 // reserved value type for packedData
 const valueTypePack uint8 = 255
 
 // supported value types in params and returns
 const (
-	ValueTypeBytes ValueType = iota
-	ValueTypeI32
-	ValueTypeI64
-	ValueTypeF32
-	ValueTypeF64
+	ValueTypeBytes ValueType = ValueType(mdk.ValueTypeBytes)
+	ValueTypeI32   ValueType = ValueType(mdk.ValueTypeI32)
+	ValueTypeI64   ValueType = ValueType(mdk.ValueTypeI64)
+	ValueTypeF32   ValueType = ValueType(mdk.ValueTypeF32)
+	ValueTypeF64   ValueType = ValueType(mdk.ValueTypeF64)
 )
 
 // Param defines the attributes of a function parameter.
@@ -145,7 +145,7 @@ func (hf *HostFunction) convertParamsToStruct(ctx context.Context, m ModuleProxy
 // |                  | Memory spaces are defined for different data types.      |
 // +------------------+----------------------------------------------------------+
 // | Packing Logic    | The packed data format (each of 64 bits or 8 bytes):     |
-// |                  | - 1st byte (8 bits)  : Data type (e.g., byte, uint32)    |
+// |                  | - First 1 byte (8 bits)  : Data type (e.g., byte, uint32)    |
 // |                  | - Next 4 bytes (32 bits) : Data offset in memory         |
 // |                  | - Last 3 bytes (24 bits) : Data length or size           |
 // +------------------+----------------------------------------------------------+
@@ -166,8 +166,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 		return nil, nil, nil
 	}
 
-	fmt.Println("FUNC: ", hf.Name)
-
+	// Return runtime error if return values does not match
 	if len(*results) != len(hf.Returns) {
 		return nil, nil, fmt.Errorf("return value missmatch %d != %d", len(*results), len(hf.Returns))
 	}
@@ -187,7 +186,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 			return nil, nil, err
 		}
 
-		if mdk.ValueType(valueType) != mdk.ValueType(hf.Returns[i]) {
+		if ValueType(valueType) != hf.Returns[i] {
 			return nil, nil, fmt.Errorf("return value does not match actual value %d != %d", valueType, hf.Returns[i])
 		}
 
@@ -211,7 +210,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 		}
 
 		// Pack the offset and size into a single uint64
-		packedDatas[i], err = mdk.PackUI64(uint8(valueType), offset, offsetSize)
+		packedDatas[i], err = mdk.PackUI64(valueType, offset, offsetSize)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -237,7 +236,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	}
 
 	// Final packed data, which contains offset and size of packedDatas slice
-	packedData, err := mdk.PackUI64(valueTypePack, offset, offsetSize)
+	packedData, err := mdk.PackUI64(mdk.ValueType(valueTypePack), offset, offsetSize)
 	if err != nil {
 		return nil, nil, err
 	}
