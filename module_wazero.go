@@ -73,7 +73,7 @@ func (gf *wazeroGuestFunction) Invoke(params ...uint64) ([]uint64, error) {
 	// TODO: Use CallWithStack
 	res, err := gf.fn.Call(gf.ctx, params...)
 	if err != nil {
-		err = errors.Join(errors.New("can't call guest function"), err)
+		err = errors.Join(errors.New("An error occurred while attempting to invoke the guest function."), err)
 		gf.log.Error(err.Error())
 		return nil, err
 	}
