@@ -69,7 +69,7 @@ func Results(resultsOffset ResultOffset) []Result {
 	t, offset, size := UnpackUI64(uint64(resultsOffset))
 
 	if t != valueTypePack {
-		panic(fmt.Sprintf("can't unpack data, value type is not type of valueTypePack. expected %d, got %d", valueTypePack, t))
+		panic(fmt.Sprintf("can't unpack data, value type is not a type of valueTypePack. expected %d, got %d", valueTypePack, t))
 	}
 
 	// calculate the number of elements in the array
