@@ -83,8 +83,13 @@ type HostFunctionCallback func(ctx context.Context, moduleProxy ModuleProxy, sta
 // allowing for easier access to parameter data instead of dealing with memory stacks and offsets.
 func (hf *HostFunction) convertParamsToStruct(ctx context.Context, m ModuleProxy, stackParams []uint64) (Params, error) {
 
-	if len(stackParams) != len(hf.Params) {
-		return nil, fmt.Errorf("params mismatch expected: %d received: %d", len(hf.Params), len(stackParams))
+	// If user did not define params, skip the whole process, we still might get stackParams[0] = 0
+	if len(hf.Params) == 0 {
+		return nil, nil
+	}
+
+	if len(hf.Params) != len(stackParams) {
+		return nil, fmt.Errorf("%s: params mismatch expected: %d received: %d ", hf.Name, len(hf.Params), len(stackParams))
 	}
 
 	params := make(Params, len(hf.Params))

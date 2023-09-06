@@ -5,7 +5,6 @@ package wasify
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 
 	"github.com/tetratelabs/wazero"
@@ -148,8 +147,6 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 
 		moduleConfig.log.Debug("exporting host function", "function", hf.Name, "module", moduleConfig.Name)
 
-		fmt.Println("hf.Returns", hf.Returns, "len", len(hf.Returns), "name", hf.Name)
-
 		modBuilder = modBuilder.
 			NewFunctionBuilder().
 			WithGoModuleFunction(api.GoModuleFunc(wazeroHostFunctionCallback(wazeroModule, moduleConfig, &hf)),
@@ -157,6 +154,14 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 				r.convertToAPIValueTypes([]ValueType{ValueTypeI64}),
 			).
 			Export(hf.Name)
+
+		// modBuilder = modBuilder.
+		// 	NewFunctionBuilder().
+		// 	WithGoModuleFunction(api.GoModuleFunc(func(ctx context.Context, mod api.Module, stack []uint64) {
+		// 		fmt.Println("RET: ", stack[0])
+		// 		// stack[0] = api.EncodeU32(ret)
+		// 	}), []api.ValueType{}, []api.ValueType{api.ValueTypeI64}).
+		// 	Export(hf.Name)
 	}
 
 	// Instantiate user defined host functions
@@ -166,29 +171,29 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 		return err
 	}
 
-	// NewHostModuleBuilder for wasify pre-defined host functions
-	modBuilder = r.runtime.NewHostModuleBuilder(WASIFY_NAMESPACE)
+	// // NewHostModuleBuilder for wasify pre-defined host functions
+	// modBuilder = r.runtime.NewHostModuleBuilder(WASIFY_NAMESPACE)
 
-	// initialize pre-defined host functions and pass any necessary configurations
-	hf := newHostFunctions(moduleConfig)
+	// // initialize pre-defined host functions and pass any necessary configurations
+	// hf := newHostFunctions(moduleConfig)
 
-	// register pre-defined host functions
-	log := hf.newLog()
+	// // register pre-defined host functions
+	// log := hf.newLog()
 
-	// host logger
-	modBuilder.
-		NewFunctionBuilder().
-		WithGoModuleFunction(api.GoModuleFunc(wazeroHostFunctionCallback(wazeroModule, moduleConfig, log)),
-			r.convertToAPIValueTypes(log.Params),
-			r.convertToAPIValueTypes(log.Returns),
-		).
-		Export(log.Name)
+	// // host logger
+	// modBuilder.
+	// 	NewFunctionBuilder().
+	// 	WithGoModuleFunction(api.GoModuleFunc(wazeroHostFunctionCallback(wazeroModule, moduleConfig, log)),
+	// 		r.convertToAPIValueTypes(log.Params),
+	// 		r.convertToAPIValueTypes(log.Returns),
+	// 	).
+	// 	Export(log.Name)
 
-	_, err = modBuilder.Instantiate(ctx)
-	if err != nil {
-		err = errors.Join(errors.New("can't instantiate wasify NewHostModuleBuilder [pre-defined host funcs]"), err)
-		return err
-	}
+	// _, err = modBuilder.Instantiate(ctx)
+	// if err != nil {
+	// 	err = errors.Join(errors.New("can't instantiate wasify NewHostModuleBuilder [pre-defined host funcs]"), err)
+	// 	return err
+	// }
 
 	return nil
 

@@ -64,6 +64,11 @@ func Arg(data any) ArgOffset {
 // unpacking each element into a Result struct and storing it in a slice of Results.
 // Finally, the function returns the slice of Results.
 func Results(resultsOffset ResultOffset) []Result {
+
+	if resultsOffset == 0 {
+		return nil
+	}
+
 	t, offset, size := UnpackUI64(uint64(resultsOffset))
 
 	if ValueType(t) != valueTypePack {

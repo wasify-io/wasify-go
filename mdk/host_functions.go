@@ -1,9 +1,7 @@
 package mdk
 
-import "fmt"
-
-//go:wasmimport wasify log
-func log(ArgOffset, ArgOffset)
+////go:wasmimport wasify log
+// func log(ArgOffset, ArgOffset)
 
 func Log(format string, a ...any) {
 	LogDebug(format, a...)
@@ -26,5 +24,5 @@ func LogError(format string, a ...any) {
 }
 
 func slog(format string, lvl string, a ...any) {
-	log(Arg(fmt.Sprintf(format, a...)), Arg(lvl))
+	// log(Arg(fmt.Sprintf(format, a...)), Arg(lvl))
 }
