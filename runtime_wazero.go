@@ -164,13 +164,6 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 			).
 			Export(hf.Name)
 
-		// modBuilder = modBuilder.
-		// 	NewFunctionBuilder().
-		// 	WithGoModuleFunction(api.GoModuleFunc(func(ctx context.Context, mod api.Module, stack []uint64) {
-		// 		fmt.Println("RET: ", stack[0])
-		// 		// stack[0] = api.EncodeU32(ret)
-		// 	}), []api.ValueType{}, []api.ValueType{api.ValueTypeI64}).
-		// 	Export(hf.Name)
 	}
 
 	// Instantiate user defined host functions
