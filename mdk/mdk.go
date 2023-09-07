@@ -122,7 +122,7 @@ func Alloc(data any) (uint64, error) {
 		return 0, err
 	}
 
-	var offset uint32
+	var offset uint64
 
 	switch dataType {
 	case ValueTypeBytes:
@@ -143,28 +143,28 @@ func Alloc(data any) (uint64, error) {
 		return 0, fmt.Errorf("unsupported data type %d for allocation", dataType)
 	}
 
-	return PackUI64(dataType, offset, offsetSize)
+	return PackUI64(dataType, uint32(offset), offsetSize)
 }
 
-func AllocBytes(data []byte, offsetSize uint32) uint32 {
+func AllocBytes(data []byte, offsetSize uint32) uint64 {
 	return bytesToLeakedPtr(data, offsetSize)
 }
-func AllocByte(data byte) uint32 {
+func AllocByte(data byte) uint64 {
 	return byteToLeakedPtr(data)
 }
-func AllocUint32Le(data uint32) uint32 {
+func AllocUint32Le(data uint32) uint64 {
 	return uint32ToLeakedPtr(data)
 }
-func AllocUint64Le(data uint64) uint32 {
+func AllocUint64Le(data uint64) uint64 {
 	return uint64ToLeakedPtr(data)
 }
-func AllocFloat32Le(data float32) uint32 {
+func AllocFloat32Le(data float32) uint64 {
 	return float32ToLeakedPtr(data)
 }
-func AllocFloat64Le(data float64) uint32 {
+func AllocFloat64Le(data float64) uint64 {
 	return float64ToLeakedPtr(data)
 }
-func AllocString(data string, offsetSize uint32) uint32 {
+func AllocString(data string, offsetSize uint32) uint64 {
 	return stringToLeakedPtr(data, offsetSize)
 }
 
@@ -173,7 +173,7 @@ func AllocString(data string, offsetSize uint32) uint32 {
 // then sets the memory to zeros and frees it.
 func Free(packedData uint64) {
 	_, offset, _ := UnpackUI64(packedData)
-	free(offset)
+	free(uint64(offset))
 }
 
 // PackUI64 takes a data type (in the form of a byte), a pointer (offset in memory),
@@ -181,21 +181,21 @@ func Free(packedData uint64) {
 //
 // Structure of the packed uint64:
 // - Highest 8 bits: data type
-// - Next 32 bits: offset (ptr)
+// - Next 32 bits: offset
 // - Lowest 24 bits: size
 //
 // This function will return error if the provided size is larger than what can be represented in 24 bits
 // (i.e., larger than 16,777,215).
-func PackUI64(dataType ValueType, ptr uint32, size uint32) (uint64, error) {
+func PackUI64(dataType ValueType, offset uint32, size uint32) (uint64, error) {
 	// Check if the size can be represented in 24 bits
 	if size >= (1 << 24) {
 		return 0, fmt.Errorf("Size %d exceeds 24 bits precision %d", size, (1 << 24))
 	}
 
 	// Shift the dataType into the highest 8 bits
-	// Shift the ptr (offset) into the next 32 bits
+	// Shift the offset into the next 32 bits
 	// Use the size as is, but ensure only the lowest 24 bits are used (using bitwise AND)
-	return (uint64(dataType) << 56) | (uint64(ptr) << 24) | uint64(size&0xFFFFFF), nil
+	return (uint64(dataType) << 56) | (uint64(offset) << 24) | uint64(size&0xFFFFFF), nil
 }
 
 // UnpackUI64 reverses the operation done by PackUI64.
