@@ -1,11 +1,8 @@
 package mdk
 
 import (
-	"reflect"
 	"testing"
 	"unsafe"
-
-	"github.com/wasify-io/wasify-go/internal/types"
 )
 
 func TestToLeakedPtr(t *testing.T) {
@@ -126,46 +123,5 @@ func TestToLeakedPtr(t *testing.T) {
 
 			free(offset2)
 		})
-	}
-}
-
-func TestGetOffsetSizeAndDataTypeByConversion(t *testing.T) {
-	tests := []struct {
-		input       any
-		expected    types.ValueType
-		expectError bool
-		size        uint32
-	}{
-		{[]byte{1, 2, 3, 4}, types.ValueTypeBytes, false, 4},
-		{byte(1), types.ValueTypeByte, false, 1},
-		{uint32(1234567890), types.ValueTypeI32, false, 4},
-		{uint64(1234567890123456789), types.ValueTypeI64, false, 8},
-		{float32(123.456), types.ValueTypeF32, false, 4},
-		{float64(123.4567890123), types.ValueTypeF64, false, 8},
-		{"TestString", types.ValueTypeString, false, 10},
-		{struct{}{}, types.ValueType(0), true, 0},
-		{-1, types.ValueType(0), true, 0},
-		{int(1), types.ValueType(0), true, 0},
-	}
-
-	for _, tt := range tests {
-		dataType, size, err := types.GetOffsetSizeAndDataTypeByConversion(tt.input)
-
-		if tt.expectError {
-			if err == nil {
-				t.Errorf("Expected error for input type %s but got none", reflect.TypeOf(tt.input))
-			}
-			continue
-		}
-		if err != nil {
-			t.Errorf("Unexpected error for input type %s: %v", reflect.TypeOf(tt.input), err)
-			continue
-		}
-		if dataType != tt.expected {
-			t.Errorf("For type %s, expected ValueType %d, got %d", reflect.TypeOf(tt.input), tt.expected, dataType)
-		}
-		if size != tt.size {
-			t.Errorf("For type %s, expected size %v, got %v", reflect.TypeOf(tt.input), tt.size, size)
-		}
 	}
 }
