@@ -56,12 +56,12 @@ func main() {
 
                     return m.Return(
                         []byte("Hello"),
-                        1234,
+                        uint32(1234),
                     )
 
                 },
-                Params:  []wasify.ValueType{wasify.ValueTypeByte, wasify.ValueTypeByte},
-                Returns: []wasify.ValueType{wasify.ValueTypeByte, wasify.ValueTypeByte},
+                Params:  []wasify.ValueType{wasify.ValueTypeByte, wasify.ValueTypeI32},
+                Returns: []wasify.ValueType{wasify.ValueTypeByte, wasify.ValueTypeI32},
             },
         },
     })
@@ -90,7 +90,7 @@ func hostLog(mdk.ArgData, mdk.ArgData) mdk.ResultOffset
 
 //export greet
 func _greet() {
-    resultOffset := hostLog(mdk.Arg("Hello"), mdk.Arg(2023))
+    resultOffset := hostLog(mdk.Arg("Hello"), mdk.Arg(uint32(2023)))
 
     results := mdk.Results(resultOffset)
 
