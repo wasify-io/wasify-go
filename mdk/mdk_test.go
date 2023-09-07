@@ -2,6 +2,8 @@ package mdk
 
 import (
 	"testing"
+
+	"github.com/wasify-io/wasify-go/internal/types"
 )
 
 func TestArg(t *testing.T) {
@@ -9,56 +11,56 @@ func TestArg(t *testing.T) {
 	tests := []struct {
 		name      string
 		input     any
-		valueType ValueType
+		valueType types.ValueType
 		size      uint32
 		wantPanic bool
 	}{
 		{
 			name:      "Test with byte slice",
 			input:     []byte{1, 2, 3},
-			valueType: ValueTypeBytes,
+			valueType: types.ValueTypeBytes,
 			size:      3,
 			wantPanic: false,
 		},
 		{
 			name:      "Test with byte",
 			input:     byte(5),
-			valueType: ValueTypeByte,
+			valueType: types.ValueTypeByte,
 			size:      1,
 			wantPanic: false,
 		},
 		{
 			name:      "Test with uint32",
 			input:     uint32(123),
-			valueType: ValueTypeI32,
+			valueType: types.ValueTypeI32,
 			size:      4,
 			wantPanic: false,
 		},
 		{
 			name:      "Test with uint64",
 			input:     uint64(123456789),
-			valueType: ValueTypeI64,
+			valueType: types.ValueTypeI64,
 			size:      8,
 			wantPanic: false,
 		},
 		{
 			name:      "Test with float32",
 			input:     float32(1.11),
-			valueType: ValueTypeF32,
+			valueType: types.ValueTypeF32,
 			size:      4,
 			wantPanic: false,
 		},
 		{
 			name:      "Test with float64",
 			input:     float64(1.111111),
-			valueType: ValueTypeF64,
+			valueType: types.ValueTypeF64,
 			size:      8,
 			wantPanic: false,
 		},
 		{
 			name:      "Test with string",
 			input:     "hello",
-			valueType: ValueTypeString,
+			valueType: types.ValueTypeString,
 			size:      5,
 			wantPanic: false,
 		},
@@ -96,7 +98,7 @@ func TestArg(t *testing.T) {
 }
 
 func TestPackUnpackUI64(t *testing.T) {
-	dataType := ValueTypeString
+	dataType := types.ValueTypeString
 	ptr := uint32(0x12345678)
 	size := uint32(0x123456)
 

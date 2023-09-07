@@ -4,8 +4,6 @@ package mdk
 // #include <string.h>
 import "C"
 import (
-	"fmt"
-	"reflect"
 	"unsafe"
 )
 
@@ -75,40 +73,6 @@ func float64ToLeakedPtr(data float64) (offset uint64) {
 func stringToLeakedPtr(data string, offsetSize uint32) (offset uint64) {
 	byteSlice := unsafe.Slice(unsafe.StringData(data), len(data))
 	return bytesToLeakedPtr(byteSlice, offsetSize)
-}
-
-// GetOffsetSizeAndDataTypeByConversion determines the memory size (offsetSize) and ValueType
-// of a given data. The function supports several data types.
-func GetOffsetSizeAndDataTypeByConversion(data any) (dataType ValueType, offsetSize uint32, err error) {
-
-	switch vTyped := data.(type) {
-	case []byte:
-		offsetSize = uint32(len(vTyped))
-		dataType = ValueTypeBytes
-	case byte:
-		offsetSize = 1
-		dataType = ValueTypeByte
-	case uint32:
-		offsetSize = 4
-		dataType = ValueTypeI32
-	case uint64:
-		offsetSize = 8
-		dataType = ValueTypeI64
-	case float32:
-		offsetSize = 4
-		dataType = ValueTypeF32
-	case float64:
-		offsetSize = 8
-		dataType = ValueTypeF64
-	case string:
-		offsetSize = uint32(len(vTyped))
-		dataType = ValueTypeString
-	default:
-		err = fmt.Errorf("unsupported conversion data type %s", reflect.TypeOf(vTyped))
-		return
-	}
-
-	return dataType, offsetSize, err
 }
 
 func ptrToData[T any](ptr uint64) *T {

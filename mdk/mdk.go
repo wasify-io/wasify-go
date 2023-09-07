@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"runtime"
 	"unsafe"
+
+	"github.com/wasify-io/wasify-go/internal/types"
 )
 
 // ArgData represents an offset into WebAssembly memory that refers to an argument's location.
@@ -18,23 +20,6 @@ type Result struct {
 	Size uint32
 	Data any
 }
-
-// ValueType is an enumeration of supported data types for function parameters and returns.
-type ValueType uint8
-
-// valueTypePack is a reserved ValueType used for packed data.
-const valueTypePack ValueType = 255
-
-// These constants represent the possible data types that can be used in function parameters and returns.
-const (
-	ValueTypeBytes ValueType = iota
-	ValueTypeByte
-	ValueTypeI32
-	ValueTypeI64
-	ValueTypeF32
-	ValueTypeF64
-	ValueTypeString
-)
 
 // Arg prepares data for passing as an argument to a host function in WebAssembly.
 // It accepts a generic data input and returns an ArgData which packs the memory offset and size of the data.
@@ -68,8 +53,8 @@ func Results(resultsOffset ResultOffset) []Result {
 
 	t, offsetU32, size := UnpackUI64(uint64(resultsOffset))
 
-	if t != valueTypePack {
-		panic(fmt.Sprintf("can't unpack data, value type is not a type of valueTypePack. expected %d, got %d", valueTypePack, t))
+	if t != types.ValueTypePack {
+		panic(fmt.Sprintf("can't unpack data, value type is not a type of valueTypePack. expected %d, got %d", types.ValueTypePack, t))
 	}
 
 	// calculate the number of elements in the array
@@ -88,19 +73,19 @@ func Results(resultsOffset ResultOffset) []Result {
 		var value any
 
 		switch valueType {
-		case ValueTypeBytes:
+		case types.ValueTypeBytes:
 			value = unsafe.Slice(ptrToData[byte](offset), size)
-		case ValueTypeByte:
+		case types.ValueTypeByte:
 			value = ptrToData[byte](offset)
-		case ValueTypeI32:
+		case types.ValueTypeI32:
 			value = ptrToData[uint32](offset)
-		case ValueTypeI64:
+		case types.ValueTypeI64:
 			value = ptrToData[uint64](offset)
-		case ValueTypeF32:
+		case types.ValueTypeF32:
 			value = ptrToData[float32](offset)
-		case ValueTypeF64:
+		case types.ValueTypeF64:
 			value = ptrToData[float64](offset)
-		case ValueTypeString:
+		case types.ValueTypeString:
 			value = string(unsafe.String(ptrToData[byte](offset), size))
 		}
 
@@ -118,7 +103,7 @@ func Results(resultsOffset ResultOffset) []Result {
 // It accepts a generic input and returns a uint64 value that combines the memory offset and size.
 func Alloc(data any) (uint64, error) {
 
-	dataType, offsetSize, err := GetOffsetSizeAndDataTypeByConversion(data)
+	dataType, offsetSize, err := types.GetOffsetSizeAndDataTypeByConversion(data)
 	if err != nil {
 		return 0, err
 	}
@@ -126,19 +111,19 @@ func Alloc(data any) (uint64, error) {
 	var offset uint64
 
 	switch dataType {
-	case ValueTypeBytes:
+	case types.ValueTypeBytes:
 		offset = AllocBytes(data.([]byte), offsetSize)
-	case ValueTypeByte:
+	case types.ValueTypeByte:
 		offset = AllocByte(data.(byte))
-	case ValueTypeI32:
+	case types.ValueTypeI32:
 		offset = AllocUint32Le(data.(uint32))
-	case ValueTypeI64:
+	case types.ValueTypeI64:
 		offset = AllocUint64Le(data.(uint64))
-	case ValueTypeF32:
+	case types.ValueTypeF32:
 		offset = AllocFloat32Le(data.(float32))
-	case ValueTypeF64:
+	case types.ValueTypeF64:
 		offset = AllocFloat64Le(data.(float64))
-	case ValueTypeString:
+	case types.ValueTypeString:
 		offset = AllocString(data.(string), offsetSize)
 	default:
 		return 0, fmt.Errorf("unsupported data type %d for allocation", dataType)
@@ -187,7 +172,7 @@ func Free(packedData uint64) {
 //
 // This function will return error if the provided size is larger than what can be represented in 24 bits
 // (i.e., larger than 16,777,215).
-func PackUI64(dataType ValueType, offset uint32, size uint32) (uint64, error) {
+func PackUI64(dataType types.ValueType, offset uint32, size uint32) (uint64, error) {
 	// Check if the size can be represented in 24 bits
 	if size >= (1 << 24) {
 		return 0, fmt.Errorf("Size %d exceeds 24 bits precision %d", size, (1 << 24))
@@ -201,9 +186,9 @@ func PackUI64(dataType ValueType, offset uint32, size uint32) (uint64, error) {
 
 // UnpackUI64 reverses the operation done by PackUI64.
 // Given a packed uint64, it will extract and return the original dataType, offset (ptr), and size.
-func UnpackUI64(packedData uint64) (dataType ValueType, offset uint32, size uint32) {
+func UnpackUI64(packedData uint64) (dataType types.ValueType, offset uint32, size uint32) {
 	// Extract the dataType from the highest 8 bits
-	dataType = ValueType(packedData >> 56)
+	dataType = types.ValueType(packedData >> 56)
 
 	// Extract the offset (ptr) from the next 32 bits using bitwise AND to mask the other bits
 	offset = uint32((packedData >> 24) & 0xFFFFFFFF)
