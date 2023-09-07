@@ -110,3 +110,7 @@ func GetOffsetSizeAndDataTypeByConversion(data any) (dataType ValueType, offsetS
 
 	return dataType, offsetSize, err
 }
+
+func ptrToData[T any](ptr uint64) *T {
+	return (*T)(unsafe.Pointer(uintptr(ptr)))
+}

@@ -16,7 +16,7 @@ func TestToLeakedPtr(t *testing.T) {
 	}
 
 	readBackBytes := func(offset uint64, expected any) bool {
-		readBack := unsafe.Slice((*byte)(unsafe.Pointer(uintptr(offset))), len(expected.([]byte)))
+		readBack := unsafe.Slice(ptrToData[byte](offset), len(expected.([]byte)))
 		for i, v := range readBack {
 			if v != expected.([]byte)[i] {
 				return false
@@ -26,28 +26,28 @@ func TestToLeakedPtr(t *testing.T) {
 	}
 
 	readBackByte := func(offset uint64, expected any) bool {
-		return byte(*(*byte)(unsafe.Pointer(uintptr(offset)))) == expected.(byte)
+		return *ptrToData[byte](offset) == expected.(byte)
 	}
 
 	readBackUint32 := func(offset uint64, expected any) bool {
-		return *(*uint32)(unsafe.Pointer(uintptr(offset))) == expected.(uint32)
+		return *ptrToData[uint32](offset) == expected.(uint32)
 	}
 
 	readBackUint64 := func(offset uint64, expected any) bool {
-		return *(*uint64)(unsafe.Pointer(uintptr(offset))) == expected.(uint64)
+		return *ptrToData[uint64](offset) == expected.(uint64)
 	}
 
 	readBackFloat32 := func(offset uint64, expected any) bool {
-		return *(*float32)(unsafe.Pointer(uintptr(offset))) == expected.(float32)
+		return *ptrToData[float32](offset) == expected.(float32)
 	}
 
 	readBackFloat64 := func(offset uint64, expected any) bool {
-		return *(*float64)(unsafe.Pointer(uintptr(offset))) == expected.(float64)
+		return *ptrToData[float64](offset) == expected.(float64)
 	}
 
 	readBackString := func(offset uint64, expected any) bool {
 		len := len(expected.(string))
-		return string(unsafe.Slice((*byte)(unsafe.Pointer(uintptr(offset))), len)) == expected.(string)
+		return string(unsafe.Slice(ptrToData[byte](offset), len)) == expected.(string)
 	}
 
 	tests := []testCase{

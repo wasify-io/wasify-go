@@ -66,7 +66,7 @@ func Results(resultsOffset ResultOffset) []Result {
 		return nil
 	}
 
-	t, offset, size := UnpackUI64(uint64(resultsOffset))
+	t, offsetU32, size := UnpackUI64(uint64(resultsOffset))
 
 	if t != valueTypePack {
 		panic(fmt.Sprintf("can't unpack data, value type is not a type of valueTypePack. expected %d, got %d", valueTypePack, t))
@@ -76,31 +76,32 @@ func Results(resultsOffset ResultOffset) []Result {
 	count := size / 8
 
 	// read the packed pointers and sizes from the array
-	packedData := unsafe.Slice((*uint64)(unsafe.Pointer(uintptr(offset))), count)
+	packedData := unsafe.Slice(ptrToData[uint64](uint64(offsetU32)), count)
 
 	data := make([]Result, count)
 
 	// Iterate over the packedData, unpack and read data of each element into a Result
 	for i, pd := range packedData {
-		valueType, offset, size := UnpackUI64(pd)
+		valueType, offsetU32, size := UnpackUI64(pd)
+		offset := uint64(offsetU32)
 
 		var value any
 
 		switch valueType {
 		case ValueTypeBytes:
-			value = unsafe.Slice((*byte)(unsafe.Pointer(uintptr(offset))), size)
+			value = unsafe.Slice(ptrToData[byte](offset), size)
 		case ValueTypeByte:
-			value = *(*byte)(unsafe.Pointer(uintptr(offset)))
+			value = ptrToData[byte](offset)
 		case ValueTypeI32:
-			value = *(*uint32)(unsafe.Pointer(uintptr(offset)))
+			value = ptrToData[uint32](offset)
 		case ValueTypeI64:
-			value = *(*uint64)(unsafe.Pointer(uintptr(offset)))
+			value = ptrToData[uint64](offset)
 		case ValueTypeF32:
-			value = *(*float32)(unsafe.Pointer(uintptr(offset)))
+			value = ptrToData[float32](offset)
 		case ValueTypeF64:
-			value = *(*float64)(unsafe.Pointer(uintptr(offset)))
+			value = ptrToData[float64](offset)
 		case ValueTypeString:
-			value = string(unsafe.String((*byte)(unsafe.Pointer(uintptr(offset))), size))
+			value = string(unsafe.String(ptrToData[byte](offset), size))
 		}
 
 		data[i] = Result{
