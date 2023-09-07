@@ -5,24 +5,22 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/wasify-io/wasify-go/internal/types"
 	"github.com/wasify-io/wasify-go/mdk"
 )
 
 // ValueType represents the type of value used in function parameters and returns.
-type ValueType mdk.ValueType
-
-// reserved value type for packedData
-const valueTypePack uint8 = 255
+type ValueType types.ValueType
 
 // supported value types in params and returns
 const (
-	ValueTypeBytes  ValueType = ValueType(mdk.ValueTypeBytes)
-	ValueTypeByte   ValueType = ValueType(mdk.ValueTypeByte)
-	ValueTypeI32    ValueType = ValueType(mdk.ValueTypeI32)
-	ValueTypeI64    ValueType = ValueType(mdk.ValueTypeI64)
-	ValueTypeF32    ValueType = ValueType(mdk.ValueTypeF32)
-	ValueTypeF64    ValueType = ValueType(mdk.ValueTypeF64)
-	ValueTypeString ValueType = ValueType(mdk.ValueTypeString)
+	ValueTypeBytes  ValueType = ValueType(types.ValueTypeBytes)
+	ValueTypeByte   ValueType = ValueType(types.ValueTypeByte)
+	ValueTypeI32    ValueType = ValueType(types.ValueTypeI32)
+	ValueTypeI64    ValueType = ValueType(types.ValueTypeI64)
+	ValueTypeF32    ValueType = ValueType(types.ValueTypeF32)
+	ValueTypeF64    ValueType = ValueType(types.ValueTypeF64)
+	ValueTypeString ValueType = ValueType(types.ValueTypeString)
 )
 
 // Param defines the attributes of a function parameter.
@@ -182,7 +180,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	for i, returnValue := range *results {
 
 		// get offset size and result value type (ValueType) by result's returnValue
-		valueType, offsetSize, err := mdk.GetOffsetSizeAndDataTypeByConversion(returnValue)
+		valueType, offsetSize, err := types.GetOffsetSizeAndDataTypeByConversion(returnValue)
 		if err != nil {
 			err = errors.Join(errors.New("can't convert result"), err)
 			return nil, nil, err
@@ -238,7 +236,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	}
 
 	// Final packed data, which contains offset and size of packedDatas slice
-	packedData, err := mdk.PackUI64(mdk.ValueType(valueTypePack), offset, offsetSize)
+	packedData, err := mdk.PackUI64(types.ValueTypePack, offset, offsetSize)
 	if err != nil {
 		return nil, nil, err
 	}

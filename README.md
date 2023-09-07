@@ -51,17 +51,17 @@ func main() {
                 Name: "hostLog",
                 Callback: func(ctx context.Context, m wasify.ModuleProxy, params wasify.Params) wasify.Results {
 
-                    fmt.Println("Host func param 0: ", string(params[0].Value))
-                    fmt.Println("Host func param 1: ", string(params[1].Value))
+                    fmt.Println("Host func param 0: ", params[0].Value)
+                    fmt.Println("Host func param 1: ", params[1].Value)
 
                     return m.Return(
                         []byte("Hello"),
-                        []byte("There!"),
+                        uint32(1234),
                     )
 
                 },
-                Params:  []wasify.ValueType{wasify.ValueTypeByte, wasify.ValueTypeByte},
-                Returns: []wasify.ValueType{wasify.ValueTypeByte, wasify.ValueTypeByte},
+                Params:  []wasify.ValueType{wasify.ValueTypeByte, wasify.ValueTypeI32},
+                Returns: []wasify.ValueType{wasify.ValueTypeByte, wasify.ValueTypeI32},
             },
         },
     })
@@ -86,11 +86,11 @@ import "github.com/wasify-io/wasify-go/mdk"
 func main() {}
 
 //go:wasmimport myEnv hostLog
-func hostLog(mdk.ArgOffset, mdk.ArgOffset) mdk.ResultOffset
+func hostLog(mdk.ArgData, mdk.ArgData) mdk.ResultOffset
 
 //export greet
 func _greet() {
-    resultOffset := hostLog(mdk.Arg("Hello"), mdk.Arg("World"))
+    resultOffset := hostLog(mdk.Arg("Hello"), mdk.Arg(uint32(2023)))
 
     results := mdk.Results(resultOffset)
 

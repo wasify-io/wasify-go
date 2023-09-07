@@ -3,7 +3,7 @@ package mdk
 import "fmt"
 
 //go:wasmimport wasify log
-func log(ArgOffset, ArgOffset)
+func log(ArgData, ArgData)
 
 func Log(format string, a ...any) {
 	LogDebug(format, a...)
