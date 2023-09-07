@@ -6,9 +6,9 @@ import (
 	"unsafe"
 )
 
-// ArgOffset represents an offset into WebAssembly memory that refers to an argument's location.
+// ArgData represents an offset into WebAssembly memory that refers to an argument's location.
 // This packed representation consists of a memory offset and the size of the argument data.
-type ArgOffset uint64
+type ArgData uint64
 
 // ResultOffset represents an offset into WebAssembly memory for function results.
 type ResultOffset uint64
@@ -37,15 +37,15 @@ const (
 )
 
 // Arg prepares data for passing as an argument to a host function in WebAssembly.
-// It accepts a generic data input and returns an ArgOffset which packs the memory offset and size of the data.
+// It accepts a generic data input and returns an ArgData which packs the memory offset and size of the data.
 // This function abstracts away the complexity of memory management and conversion for the user.
 //
 // The runtime.KeepAlive call is used to ensure that the 'value' object is not garbage collected
 // until the function finishes execution.
 //
-// ⚠️ Note: The ArgOffset returned by the Arg function does not need to be manually deallocated.
+// ⚠️ Note: The ArgData returned by the Arg function does not need to be manually deallocated.
 // The memory management is handled on the host side, where the allocated memory is automatically deallocated.
-func Arg(value any) ArgOffset {
+func Arg(value any) ArgData {
 
 	packedData, err := Alloc(value)
 	if err != nil {
@@ -54,7 +54,7 @@ func Arg(value any) ArgOffset {
 
 	runtime.KeepAlive(value)
 
-	return ArgOffset(packedData)
+	return ArgData(packedData)
 }
 
 // Results unpacks and returns the results of a host function in WebAssembly.
