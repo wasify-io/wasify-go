@@ -60,7 +60,7 @@ func main() {
                     )
 
                 },
-                Params:  []wasify.ValueType{wasify.ValueTypeByte, wasify.ValueTypeI32},
+                Params:  []wasify.ValueType{wasify.ValueTypeString, wasify.ValueTypeI32},
                 Returns: []wasify.ValueType{wasify.ValueTypeByte, wasify.ValueTypeI32},
             },
         },
