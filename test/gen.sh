@@ -1,16 +1,12 @@
 #!/bin/sh
 
-DIR="_data"
+DIR="$(pwd)/test/_data"
 
-cd "$DIR"
-
-for gofile in *.go; do
+for gofile in "${DIR}"/*.go; do
     base_name=$(basename "$gofile" .go)
 
     # Use tinygo to build the .wasm file
-    tinygo build -scheduler=none -o "${base_name}.wasm" -target wasi "$gofile"
+    tinygo build -scheduler=none -o "${DIR}/${base_name}.wasm" -target wasi "$gofile"
 done
-
-cd -
 
 echo "WASM generation complete."
