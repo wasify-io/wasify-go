@@ -80,6 +80,7 @@ type FSConfig struct {
 	GuestDir string
 }
 
+// getGuestDir gets the default path for guest module.
 func (fs *FSConfig) getGuestDir() string {
 
 	if fs.GuestDir == "" {
