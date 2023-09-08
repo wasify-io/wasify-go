@@ -1,4 +1,4 @@
-package test
+package wasify
 
 import (
 	"context"
@@ -6,37 +6,36 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/wasify-io/wasify-go"
 	"github.com/wasify-io/wasify-go/internal/utils"
 )
 
-//go:embed _data/empty_host_func.wasm
+//go:embed test/_data/empty_host_func.wasm
 var emptyHostFunc []byte
 
-var runtimeConfig = wasify.RuntimeConfig{
-	Runtime:     wasify.RuntimeWazero,
-	LogSeverity: wasify.LogWarning,
+var runtimeConfig = RuntimeConfig{
+	Runtime:     RuntimeWazero,
+	LogSeverity: LogWarning,
 }
 
-var moduleConfig = wasify.ModuleConfig{
+var moduleConfig = ModuleConfig{
 	Namespace:   "myEnv",
-	LogSeverity: wasify.LogError,
-	FSConfig: wasify.FSConfig{
+	LogSeverity: LogError,
+	FSConfig: FSConfig{
 		Enabled:  true,
 		HostDir:  "test/_data/",
 		GuestDir: "/",
 	},
-	Wasm: wasify.Wasm{
+	Wasm: Wasm{
 		Binary: emptyHostFunc,
 	},
-	HostFunctions: []wasify.HostFunction{
+	HostFunctions: []HostFunction{
 		{
 			Name: "hostFunc",
-			Callback: func(ctx context.Context, m wasify.ModuleProxy, params wasify.Params) *wasify.Results {
+			Callback: func(ctx context.Context, m ModuleProxy, params Params) *Results {
 				return nil
 			},
-			Params:  []wasify.ValueType{},
-			Returns: []wasify.ValueType{},
+			Params:  []ValueType{},
+			Returns: []ValueType{},
 		},
 	},
 }
@@ -55,7 +54,7 @@ func TestNewModuleInstantaion(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("successful instantiation", func(t *testing.T) {
-		runtime, err := wasify.NewRuntime(ctx, &runtimeConfig)
+		runtime, err := NewRuntime(ctx, &runtimeConfig)
 		assert.NoError(t, err, "Expected no error while creating runtime")
 		assert.NotNil(t, runtime, "Expected a non-nil runtime")
 
@@ -78,13 +77,13 @@ func TestNewModuleInstantaion(t *testing.T) {
 		invalidConfig := runtimeConfig
 		invalidConfig.Runtime = 255
 
-		runtime, err := wasify.NewRuntime(ctx, &invalidConfig)
+		runtime, err := NewRuntime(ctx, &invalidConfig)
 		assert.Error(t, err, "Expected an error due to invalid config")
 		assert.Nil(t, runtime, "Expected a nil runtime due to invalid config")
 	})
 
 	t.Run("failure due to invalid hash", func(t *testing.T) {
-		runtime, err := wasify.NewRuntime(ctx, &runtimeConfig)
+		runtime, err := NewRuntime(ctx, &runtimeConfig)
 		assert.NoError(t, err, "Expected no error while creating runtime")
 
 		defer func() {
@@ -104,7 +103,7 @@ func TestNewModuleInstantaion(t *testing.T) {
 	})
 
 	t.Run("failure due to invalid wasm", func(t *testing.T) {
-		runtime, err := wasify.NewRuntime(ctx, &runtimeConfig)
+		runtime, err := NewRuntime(ctx, &runtimeConfig)
 		assert.NoError(t, err, "Expected no error while creating runtime")
 
 		defer func() {

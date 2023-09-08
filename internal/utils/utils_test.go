@@ -1,27 +1,31 @@
-package test
+package utils
 
 import (
 	"log/slog"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/wasify-io/wasify-go/internal/memory"
-	"github.com/wasify-io/wasify-go/internal/utils"
 )
 
 func TestGetLogLevel(t *testing.T) {
+
+	newLogger := NewLogger(LogDebug)
+	assert.NotNil(t, newLogger)
+
 	tests := []struct {
-		severity utils.LogSeverity
+		severity LogSeverity
 		expected slog.Level
 	}{
-		{utils.LogDebug, slog.LevelDebug},
-		{utils.LogInfo, slog.LevelInfo},
-		{utils.LogWarning, slog.LevelWarn},
-		{utils.LogError, slog.LevelError},
-		{utils.LogSeverity(255), slog.LevelInfo}, // Unexpected severity
+		{LogDebug, slog.LevelDebug},
+		{LogInfo, slog.LevelInfo},
+		{LogWarning, slog.LevelWarn},
+		{LogError, slog.LevelError},
+		{LogSeverity(255), slog.LevelInfo}, // Unexpected severity
 	}
 
 	for _, test := range tests {
-		got := utils.GetlogLevel(test.severity)
+		got := GetlogLevel(test.severity)
 		if got != test.expected {
 			t.Errorf("for severity %d, expected %d but got %d", test.severity, test.expected, got)
 		}
@@ -32,7 +36,7 @@ func TestCalculateHash(t *testing.T) {
 	data := []byte("test")
 	expected := "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08" // known hash for "test"
 
-	hash, err := utils.CalculateHash(data)
+	hash, err := CalculateHash(data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -45,12 +49,12 @@ func TestCalculateHash(t *testing.T) {
 func TestCompareHashes(t *testing.T) {
 	hash := "wrong hash"
 
-	err := utils.CompareHashes(hash, hash)
+	err := CompareHashes(hash, hash)
 	if err != nil {
 		t.Errorf("did not expect an error for equal hashes, but got %v", err)
 	}
 
-	err = utils.CompareHashes(hash, "12345")
+	err = CompareHashes(hash, "12345")
 	if err == nil {
 		t.Error("expected an error for different hashes, but got none")
 	}
@@ -60,7 +64,7 @@ func TestUint64ArrayToBytes(t *testing.T) {
 	data := []uint64{1, 2}
 	expected := []byte{1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0} // little-endian representation
 
-	result := utils.Uint64ArrayToBytes(data)
+	result := Uint64ArrayToBytes(data)
 	if len(result) != len(expected) {
 		t.Fatalf("expected %d bytes but got %d", len(expected), len(result))
 	}
