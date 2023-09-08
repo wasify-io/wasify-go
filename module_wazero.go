@@ -64,21 +64,25 @@ type wazeroGuestFunction struct {
 // If the function name is not "malloc" or "free", it logs the function call details.
 // It omits logging for "malloc" and "free" functions due to potential high frequency,
 // which could lead to excessive log entries and complicate debugging for host funcs.
-func (gf *wazeroGuestFunction) Invoke(params ...uint64) ([]uint64, error) {
+func (gf *wazeroGuestFunction) Invoke(params ...uint64) (uint64, error) {
 
 	if gf.Namespace != "malloc" && gf.Namespace != "free" {
 		gf.log.Info("calling function", "name", gf.Namespace, "module", gf.Namespace, "params", params)
 	}
 
-	// TODO: Use CallWithStack
-	res, err := gf.fn.Call(gf.ctx, params...)
+	stack := make([]uint64, len(params)+1)
+	copy(stack, params)
+
+	err := gf.fn.CallWithStack(gf.ctx, stack[:])
 	if err != nil {
-		err = errors.Join(errors.New("An error occurred while attempting to invoke the guest function."), err)
+		err = errors.Join(fmt.Errorf("An error occurred while attempting to invoke the guest function %s", gf.name), err)
 		gf.log.Error(err.Error())
-		return nil, err
+		return 0, err
 	}
 
-	return res, nil
+	fmt.Println()
+
+	return stack[0], nil
 }
 
 // Memory retrieves a Memory instance associated with the wazeroModule.
@@ -336,12 +340,13 @@ func (r *wazeroMemory) Size() uint32 {
 // Note: Always make sure to free memory after allocation.
 func (m *wazeroMemory) Malloc(size uint32) (uint32, error) {
 
-	mallocRes, err := m.wazeroModule.GuestFunction(m.wazeroModule.ctx, "malloc").Invoke(uint64(size))
+	r, err := m.wazeroModule.GuestFunction(m.wazeroModule.ctx, "malloc").Invoke(uint64(size))
 	if err != nil {
 		err = errors.Join(fmt.Errorf("can't invoke malloc function "), err)
 		return 0, err
 	}
-	offset := uint32(mallocRes[0])
+
+	offset := uint32(r)
 
 	return offset, nil
 }
