@@ -10,6 +10,8 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"github.com/wasify-io/wasify-go/internal/memory"
+	"github.com/wasify-io/wasify-go/internal/utils"
 )
 
 // getWazeroRuntime creates and returns a wazero runtime instance using the provided context and
@@ -58,12 +60,12 @@ func (r *wazeroRuntime) NewModule(ctx context.Context, moduleConfig *ModuleConfi
 	// you can set those modules to "Debug". This will replace the inherited log level,
 	// allowing the module to display debug information.
 	if moduleConfig.LogSeverity != 0 {
-		moduleConfig.log = newLogger(moduleConfig.LogSeverity)
+		moduleConfig.log = utils.NewLogger(utils.LogSeverity(moduleConfig.LogSeverity))
 	}
 
 	// Check and compare hashes if provided in the moduleConfig.
 	if moduleConfig.Wasm.Hash != "" {
-		actualHash, err := calculateHash(moduleConfig.Wasm.Binary)
+		actualHash, err := utils.CalculateHash(moduleConfig.Wasm.Binary)
 		if err != nil {
 			err = errors.Join(errors.New("can't calculate the hash"), err)
 			moduleConfig.log.Warn(err.Error(), "module", moduleConfig.Namespace, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
@@ -71,7 +73,7 @@ func (r *wazeroRuntime) NewModule(ctx context.Context, moduleConfig *ModuleConfi
 		}
 		moduleConfig.log.Info("hash calculation", "module", moduleConfig.Namespace, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
 
-		err = compareHashes(actualHash, moduleConfig.Wasm.Hash)
+		err = utils.CompareHashes(actualHash, moduleConfig.Wasm.Hash)
 		if err != nil {
 			moduleConfig.log.Warn(err.Error(), "module", moduleConfig.Namespace, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
 			return nil, err
@@ -153,7 +155,7 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 		// should be freed up.
 		// See host_function.go for more details.
 		hf.moduleConfig = moduleConfig
-		hf.allocationMap = newAllocationMap[uint32, uint32]()
+		hf.allocationMap = memory.NewAllocationMap[uint32, uint32]()
 
 		// If hsot function has any return values, we pack it as a single uint64
 		var returnValuesPackedData = []ValueType{}

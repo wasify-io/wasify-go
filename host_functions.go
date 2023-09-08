@@ -2,6 +2,8 @@ package wasify
 
 import (
 	"context"
+
+	"github.com/wasify-io/wasify-go/internal/memory"
 )
 
 const WASIFY_NAMESPACE = "wasify"
@@ -45,7 +47,7 @@ func (hf *hostFunctions) newLog() *HostFunction {
 
 		// required fields
 		moduleConfig:  hf.moduleConfig,
-		allocationMap: newAllocationMap[uint32, uint32](),
+		allocationMap: memory.NewAllocationMap[uint32, uint32](),
 	}
 
 	return log

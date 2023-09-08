@@ -4,6 +4,22 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+
+	"github.com/wasify-io/wasify-go/internal/utils"
+)
+
+type LogSeverity utils.LogSeverity
+
+// The log level is initially set to "Info" for runtimes and "zero" (0) for modules.
+// However, modules will adopt the log level from their parent runtime.
+// If you want only "Error" level for a runtime but need to debug specific module(s),
+// you can set those modules to "Debug". This will replace the inherited log level,
+// allowing the module to display debug information.
+const (
+	LogDebug   LogSeverity = LogSeverity(utils.LogDebug)
+	LogInfo    LogSeverity = LogSeverity(utils.LogInfo)
+	LogWarning LogSeverity = LogSeverity(utils.LogWarning)
+	LogError   LogSeverity = LogSeverity(utils.LogError)
 )
 
 type Runtime interface {
@@ -47,7 +63,7 @@ type RuntimeConfig struct {
 // It returns the initialized runtime and any error that might occur during the process.
 func NewRuntime(ctx context.Context, c *RuntimeConfig) (runtime Runtime, err error) {
 
-	c.log = newLogger(c.LogSeverity)
+	c.log = utils.NewLogger(utils.LogSeverity(c.LogSeverity))
 
 	c.log.Info("runtime has been initialized successfully", "runtime", c.Runtime)
 

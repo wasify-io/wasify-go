@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/wasify-io/wasify-go/internal/memory"
 	"github.com/wasify-io/wasify-go/internal/types"
+	"github.com/wasify-io/wasify-go/internal/utils"
 	"github.com/wasify-io/wasify-go/mdk"
 )
 
@@ -61,7 +63,7 @@ type HostFunction struct {
 	Returns []ValueType
 
 	// Allocation map to track parameter and return value allocations for host func.
-	allocationMap *allocationMap[uint32, uint32]
+	allocationMap *memory.AllocationMap[uint32, uint32]
 
 	// Configuration of the associated module.
 	moduleConfig *ModuleConfig
@@ -109,7 +111,7 @@ func (hf *HostFunction) convertParamsToStruct(ctx context.Context, m ModuleProxy
 			Value:  data,
 		}
 
-		hf.allocationMap.store(offset, offsetSize)
+		hf.allocationMap.Store(offset, offsetSize)
 
 	}
 
@@ -201,7 +203,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 
 		// Add offset and offset size in the hsot function's allocationMap
 		// for later cleanup.
-		hf.allocationMap.store(offset, offsetSize)
+		hf.allocationMap.Store(offset, offsetSize)
 
 		err = m.Write(offset, returnValue)
 		if err != nil {
@@ -227,9 +229,9 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	returnOffsets[offset] = offsetSize
 	// Add offset and offset size in the hsot function's allocationMap
 	// for later cleanup.
-	hf.allocationMap.store(offset, offsetSize)
+	hf.allocationMap.Store(offset, offsetSize)
 
-	err = m.Write(offset, uint64ArrayToBytes(packedDatas))
+	err = m.Write(offset, utils.Uint64ArrayToBytes(packedDatas))
 	if err != nil {
 		err = errors.Join(errors.New("can't write offset of packed return values"), err)
 		return nil, nil, err
@@ -257,10 +259,10 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 // cleanup will be ran at the end of the execution of host func callback.
 func (hf *HostFunction) cleanup(m ModuleProxy, params Params, returnOffsets map[uint32]uint32) error {
 
-	totalSize := hf.allocationMap.totalSize()
+	totalSize := hf.allocationMap.TotalSize()
 
 	for _, param := range params {
-		if _, ok := hf.allocationMap.load(param.Offset); !ok {
+		if _, ok := hf.allocationMap.Load(param.Offset); !ok {
 			continue
 		}
 
@@ -270,7 +272,7 @@ func (hf *HostFunction) cleanup(m ModuleProxy, params Params, returnOffsets map[
 			return err
 		}
 
-		hf.allocationMap.delete(param.Offset)
+		hf.allocationMap.Delete(param.Offset)
 	}
 
 	for offset := range returnOffsets {
@@ -280,13 +282,13 @@ func (hf *HostFunction) cleanup(m ModuleProxy, params Params, returnOffsets map[
 			return err
 		}
 
-		hf.allocationMap.delete(offset)
+		hf.allocationMap.Delete(offset)
 	}
 
 	hf.moduleConfig.log.Debug(
 		"cleanup: host func params and returns",
 		"total_bytes", totalSize,
-		"available_bytes", hf.allocationMap.totalSize(),
+		"available_bytes", hf.allocationMap.TotalSize(),
 		"func", hf.Name,
 		"module", hf.moduleConfig.Namespace)
 
