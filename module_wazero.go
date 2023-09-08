@@ -220,6 +220,8 @@ func (m *wazeroMemory) Write(offset uint32, v any) error {
 	switch vTyped := v.(type) {
 	case []byte:
 		err = m.WriteBytes(offset, vTyped)
+	case byte:
+		err = m.WriteByte(offset, vTyped)
 	case uint32:
 		err = m.WriteUint32Le(offset, vTyped)
 	case uint64:
@@ -228,6 +230,8 @@ func (m *wazeroMemory) Write(offset uint32, v any) error {
 		err = m.WriteFloat32Le(offset, vTyped)
 	case float64:
 		err = m.WriteFloat64Le(offset, vTyped)
+	case string:
+		err = m.WriteString(offset, vTyped)
 	default:
 		err := fmt.Errorf("unsupported write data type %s", reflect.TypeOf(v))
 		m.log.Error(err.Error())
@@ -241,6 +245,17 @@ func (m *wazeroMemory) WriteBytes(offset uint32, v []byte) error {
 	ok := m.mod.Memory().Write(offset, v)
 	if !ok {
 		err := fmt.Errorf(" Memory.WriteBytes(%d, %d) out of range of memory size %d", offset, len(v), m.Size())
+		m.log.Error(err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (m *wazeroMemory) WriteByte(offset uint32, v byte) error {
+	ok := m.mod.Memory().WriteByte(offset, v)
+	if !ok {
+		err := fmt.Errorf(" Memory.WriteByte(%d, %d) out of range of memory size %d", offset, 1, m.Size())
 		m.log.Error(err.Error())
 		return err
 	}
@@ -285,6 +300,17 @@ func (m *wazeroMemory) WriteFloat64Le(offset uint32, v float64) error {
 	ok := m.mod.Memory().WriteFloat64Le(offset, v)
 	if !ok {
 		err := fmt.Errorf(" Memory.WriteFloat64Le(%d, %d) out of range of memory size %d", offset, 8, m.Size())
+		m.log.Error(err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (m *wazeroMemory) WriteString(offset uint32, v string) error {
+	ok := m.mod.Memory().WriteString(offset, v)
+	if !ok {
+		err := fmt.Errorf(" Memory.WriteString(%d, %d) out of range of memory size %d", offset, len(v), m.Size())
 		m.log.Error(err.Error())
 		return err
 	}

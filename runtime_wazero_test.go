@@ -1,4 +1,4 @@
-package wasify_test
+package wasify
 
 import (
 	"context"
@@ -6,56 +6,51 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/wasify-io/wasify-go"
+	"github.com/tetratelabs/wazero/api"
 	"github.com/wasify-io/wasify-go/internal/utils"
 )
 
-//go:embed testdata/wasm/empty_host_func.wasm
-var emptyHostFunc []byte
-
-var testRuntimeConfig = wasify.RuntimeConfig{
-	Runtime:     wasify.RuntimeWazero,
-	LogSeverity: wasify.LogWarning,
-}
-
-var testModuleConfig = wasify.ModuleConfig{
-	Namespace:   "myEnv",
-	LogSeverity: wasify.LogError,
-	FSConfig: wasify.FSConfig{
-		Enabled:  true,
-		HostDir:  "test/_data/",
-		GuestDir: "/",
-	},
-	Wasm: wasify.Wasm{
-		Binary: emptyHostFunc,
-	},
-	HostFunctions: []wasify.HostFunction{
-		{
-			Name: "hostFunc",
-			Callback: func(ctx context.Context, m wasify.ModuleProxy, params wasify.Params) *wasify.Results {
-				return nil
-			},
-			Params:  []wasify.ValueType{},
-			Returns: []wasify.ValueType{},
-		},
-	},
-}
-
-func TestMain(t *testing.T) {
-
-	hash, err := utils.CalculateHash(emptyHostFunc)
-	assert.NoError(t, err, "Expected no error while calculating hash")
-
-	testModuleConfig.Wasm.Hash = hash
-
-}
+//go:embed testdata/wasm/empty_host_func/main.wasm
+var wasm_emptyHostFunc []byte
 
 func TestNewModuleInstantaion(t *testing.T) {
+
+	testRuntimeConfig := RuntimeConfig{
+		Runtime:     RuntimeWazero,
+		LogSeverity: LogError,
+	}
+
+	testModuleConfig := ModuleConfig{
+		Namespace:   "empty_host_func",
+		LogSeverity: LogError,
+		FSConfig: FSConfig{
+			Enabled:  true,
+			HostDir:  "test/_data/",
+			GuestDir: "/",
+		},
+		Wasm: Wasm{
+			Binary: wasm_emptyHostFunc,
+		},
+		HostFunctions: []HostFunction{
+			{
+				Name: "hostFunc",
+				Callback: func(ctx context.Context, m ModuleProxy, params Params) *Results {
+					return nil
+				},
+				Params:  []ValueType{},
+				Returns: []ValueType{},
+			},
+		},
+	}
+
+	hash, err := utils.CalculateHash(wasm_emptyHostFunc)
+	assert.NoError(t, err, "Expected no error while calculating hash")
+	testModuleConfig.Wasm.Hash = hash
 
 	ctx := context.Background()
 
 	t.Run("successful instantiation", func(t *testing.T) {
-		runtime, err := wasify.NewRuntime(ctx, &testRuntimeConfig)
+		runtime, err := NewRuntime(ctx, &testRuntimeConfig)
 		assert.NoError(t, err, "Expected no error while creating runtime")
 		assert.NotNil(t, runtime, "Expected a non-nil runtime")
 
@@ -78,13 +73,13 @@ func TestNewModuleInstantaion(t *testing.T) {
 		invalidConfig := testRuntimeConfig
 		invalidConfig.Runtime = 255
 
-		runtime, err := wasify.NewRuntime(ctx, &invalidConfig)
+		runtime, err := NewRuntime(ctx, &invalidConfig)
 		assert.Error(t, err, "Expected an error due to invalid config")
 		assert.Nil(t, runtime, "Expected a nil runtime due to invalid config")
 	})
 
 	t.Run("failure due to invalid hash", func(t *testing.T) {
-		runtime, err := wasify.NewRuntime(ctx, &testRuntimeConfig)
+		runtime, err := NewRuntime(ctx, &testRuntimeConfig)
 		assert.NoError(t, err, "Expected no error while creating runtime")
 
 		defer func() {
@@ -104,7 +99,7 @@ func TestNewModuleInstantaion(t *testing.T) {
 	})
 
 	t.Run("failure due to invalid wasm", func(t *testing.T) {
-		runtime, err := wasify.NewRuntime(ctx, &testRuntimeConfig)
+		runtime, err := NewRuntime(ctx, &testRuntimeConfig)
 		assert.NoError(t, err, "Expected no error while creating runtime")
 
 		defer func() {
@@ -119,6 +114,16 @@ func TestNewModuleInstantaion(t *testing.T) {
 		module, err := runtime.NewModule(ctx, &invalidtestModuleConfig)
 		assert.Error(t, err)
 		assert.Nil(t, module)
+	})
+
+	t.Run("test convertToAPIValueTypes", func(t *testing.T) {
+		r := &wazeroRuntime{}
+
+		for vt := ValueTypeBytes; vt <= ValueTypeString; vt++ {
+			converted := r.convertToAPIValueTypes([]ValueType{vt})
+			assert.Len(t, converted, 1, "Unexpected length of converted types for %v", vt)
+			assert.Equal(t, api.ValueTypeI64, converted[0], "Unexpected conversion for %v", vt)
+		}
 	})
 
 }

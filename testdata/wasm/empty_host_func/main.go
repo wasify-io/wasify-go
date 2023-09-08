@@ -2,7 +2,7 @@ package main
 
 func main() {}
 
-//go:wasmimport myEnv hostFunc
+//go:wasmimport empty_host_func hostFunc
 func hostFunc()
 
 //export greet

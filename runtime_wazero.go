@@ -116,10 +116,12 @@ func (r *wazeroRuntime) convertToAPIValueTypes(types []ValueType) []api.ValueTyp
 		switch t {
 		case
 			ValueTypeBytes,
+			ValueTypeByte,
 			ValueTypeI32,
 			ValueTypeI64,
 			ValueTypeF32,
-			ValueTypeF64:
+			ValueTypeF64,
+			ValueTypeString:
 			valueTypes[i] = api.ValueTypeI64
 		}
 	}
