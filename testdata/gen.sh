@@ -1,6 +1,6 @@
 #!/bin/sh
 
-DIR="$(pwd)/test/_data"
+DIR="$(pwd)/testdata/wasm"
 
 for gofile in "${DIR}"/*.go; do
     base_name=$(basename "$gofile" .go)
