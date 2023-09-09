@@ -120,14 +120,6 @@ func ReadAny(packedData ArgData) (any, uint32) {
 	return value, size
 }
 
-func unpackDataAndCheckType(packedData ArgData, expectedType types.ValueType) (types.ValueType, uint32, uint32) {
-	valueType, offsetU32, size := utils.UnpackUI64(uint64(packedData))
-	if valueType != expectedType {
-		LogError(fmt.Sprintf("Unexpected data type. Expected %d, but got %d", expectedType, valueType))
-	}
-	return valueType, offsetU32, size
-}
-
 func ReadBytes(packedData ArgData) ([]byte, uint32) {
 	_, offsetU32, size := unpackDataAndCheckType(packedData, types.ValueTypeBytes)
 	return unsafe.Slice(ptrToData[byte](uint64(offsetU32)), int(size)), size

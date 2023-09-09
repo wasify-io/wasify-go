@@ -86,7 +86,6 @@ func wazeroHostFunctionCallback(wazeroModule *wazeroModule, moduleConfig *Module
 				panic(errF)
 			}
 		}()
-
 		if err != nil {
 			err = errors.Join(errors.New("function executed, but can't write to the memory"), err)
 			moduleConfig.log.Error(err.Error(), "namespace", wazeroModule.Namespace, "func", hf.Name)

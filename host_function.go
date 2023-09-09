@@ -253,8 +253,6 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 
 func (hf *HostFunction) freeParams(m ModuleProxy, params Params) error {
 
-	totalSize := hf.allocationMap.TotalSize()
-
 	for _, param := range params {
 		if _, ok := hf.allocationMap.Load(param.Offset); !ok {
 			continue
@@ -268,14 +266,6 @@ func (hf *HostFunction) freeParams(m ModuleProxy, params Params) error {
 
 		hf.allocationMap.Delete(param.Offset)
 	}
-
-	hf.moduleConfig.log.Debug(
-		"cleanup: host func params and results",
-		"allocated_bytes", totalSize,
-		"after_deallocate_bytes", hf.allocationMap.TotalSize(),
-		"namespace", hf.moduleConfig.Namespace,
-		"func", hf.Name,
-	)
 
 	return nil
 }
