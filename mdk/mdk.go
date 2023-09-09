@@ -223,10 +223,8 @@ func AllocString(data string, offsetSize uint32) uint64 {
 
 // Free frees the memory.
 func Free(packedDatas ...ArgData) {
-
 	for _, p := range packedDatas {
 		_, offset, _ := utils.UnpackUI64(uint64(p))
 		free(uint64(offset))
 	}
-
 }

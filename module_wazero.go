@@ -7,7 +7,6 @@ import (
 	"reflect"
 
 	"github.com/tetratelabs/wazero/api"
-	"github.com/wasify-io/wasify-go/internal/memory"
 	"github.com/wasify-io/wasify-go/internal/types"
 	"github.com/wasify-io/wasify-go/internal/utils"
 )
@@ -55,19 +54,16 @@ func (m *wazeroModule) GuestFunction(ctx context.Context, name string) GuestFunc
 		fn,
 		name,
 		m.Memory(),
-		memory.NewAllocationMap[uint32, uint32](),
 		m.ModuleConfig,
 	}
 }
 
 type wazeroGuestFunction struct {
-	ctx    context.Context
-	fn     api.Function
-	name   string
-	memory Memory
-	// Allocation map to track parameter and return value allocations for host func.
-	allocationMap *memory.AllocationMap[uint32, uint32]
-	moduleConfig  *ModuleConfig
+	ctx          context.Context
+	fn           api.Function
+	name         string
+	memory       Memory
+	moduleConfig *ModuleConfig
 }
 
 // call invokes wazero's CallWithStack method, which returns ome uint64 message,
@@ -118,8 +114,6 @@ func (gf *wazeroGuestFunction) Invoke(params ...any) (uint64, error) {
 			return 0, err
 		}
 
-		gf.allocationMap.Store(offsetI32, offsetSize)
-
 		err = gf.memory.Write(offsetI32, p)
 		if err != nil {
 			err = errors.Join(errors.New("can't write arg to"), err)
@@ -143,37 +137,6 @@ func (gf *wazeroGuestFunction) Invoke(params ...any) (uint64, error) {
 	}
 
 	return res, err
-}
-
-// cleanup releases the memory segments that were reserved by the
-// guest function for parameter passing and result retrieval.
-// finishes freeing memory and returns first error (if it exists).
-func (gf *wazeroGuestFunction) cleanup() error {
-
-	var firstErr error
-
-	totalSize := gf.allocationMap.TotalSize()
-
-	gf.allocationMap.Range(func(key, value uint32) bool {
-		err := gf.memory.Free(key)
-		if firstErr == nil {
-			firstErr = err
-		}
-
-		gf.allocationMap.Delete(key)
-		return true
-	})
-
-	gf.moduleConfig.log.Debug(
-		"cleanup: guest func params and results",
-		"allocated_bytes", totalSize,
-		"after_deallocate_bytes", gf.allocationMap.TotalSize(),
-		"namespace", gf.moduleConfig.Namespace,
-		"func", gf.name,
-	)
-
-	return firstErr
-
 }
 
 // Memory retrieves a Memory instance associated with the wazeroModule.
