@@ -1,6 +1,6 @@
 # wasify
 
-`wasify-go` is a Go library designed to streamline the interaction with WebAssembly (Wasm) modules by providing a developer-friendly API. It abstracts the [Wazero](https://github.com/tetratelabs/wazero) runtime, paving the way for potential support for multiple runtimes in the future, thereby enabling the execution of modules across various Wasm runtimes. This capability facilitates the loading and execution of Wasm modules, the passing of parameters between host and guest environments.
+`wasify-go` is a Go library designed to streamline the interaction with WebAssembly (Wasm) modules by providing a developer-friendly API. It abstracts the [Wazero](https://github.com/tetratelabs/wazero) runtime.
 
 wasify simplifies communication with the WebAssembly System Interface (WASI), eliminating the need for developers to delve into intricate details or communicate using numbers, which is the standard method of interaction with modules. This library significantly eases the process of running and working with wasm modules, which has traditionally been a less straightforward task.
 
@@ -17,11 +17,9 @@ wasify simplifies communication with the WebAssembly System Interface (WASI), el
 go get github.com/wasify-io/wasify-go
 ```
 
-## Usage
+## Example
 
 ### main.go
-
-In `main.go`, a Wasm module is loaded into the `wasify` runtime (abstraction of original wasm runtime), and the guest function `greet` is invoked. The host function `hostLog` is also defined in this file, which takes two parameters from the guest function, prints them, and returns two messages.
 
 ```go
 package main
@@ -51,12 +49,11 @@ func main() {
         Name: "myEnv",
         Wasm: wasify.Wasm{
             Binary: moduleData,
-            Hash: "[HASH]", // optional, can be removed.
         },
         HostFunctions: []wasify.HostFunction{
             {
-                Name: "hostLog",
-                Callback: func(ctx context.Context, m wasify.ModuleProxy, params wasify.Params) wasify.Results {
+                Name: "hostFunc",
+                Callback: func(ctx context.Context, m wasify.ModuleProxy, params wasify.Params) *wasify.Results {
 
                     fmt.Println("Host func param 0: ", params[0].Value)
                     fmt.Println("Host func param 1: ", params[1].Value)
@@ -68,7 +65,7 @@ func main() {
 
                 },
                 Params:  []wasify.ValueType{wasify.ValueTypeString, wasify.ValueTypeI32},
-                Results: []wasify.ValueType{wasify.ValueTypeByte, wasify.ValueTypeI32},
+                Results: []wasify.ValueType{wasify.ValueTypeBytes, wasify.ValueTypeI32},
             },
         },
     })
@@ -83,8 +80,6 @@ func main() {
 
 ### Wasm Module Example
 
-In `module/example.go`, a host function `hostLog` is defined and a guest function `greet` is exported. The `greet` function calls the `hostLog` function with two string messages and prints the results returned from the host function.
-
 ```go
 package main
 
@@ -92,11 +87,11 @@ import "github.com/wasify-io/wasify-go/mdk"
 
 func main() {}
 
-//go:wasmimport myEnv hostLog
-func hostLog(mdk.ArgData, mdk.ArgData) mdk.ResultOffset
+//go:wasmimport myEnv hostFunc
+func hostFunc(mdk.ArgData, mdk.ArgData) mdk.ResultOffset
 
 //export greet
-func _greet() {
+func greet() {
     resultOffset := hostLog(mdk.Arg("Hello"), mdk.Arg(uint32(2023)))
 
     results := mdk.ReadResults(resultOffset)

@@ -17,8 +17,8 @@ func newHostFunctions(moduleConfig *ModuleConfig) *hostFunctions {
 	return &hostFunctions{moduleConfig}
 }
 
-// log data from the guest module to the host machine to avoid stdin/stdout calls,
-// to ensure sandboxing.
+// newLog logs data from the guest module to the host machine,
+// to avoid stdin/stdout calls and ensure sandboxing.
 func (hf *hostFunctions) newLog() *HostFunction {
 
 	log := &HostFunction{

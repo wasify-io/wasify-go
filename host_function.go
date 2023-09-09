@@ -206,7 +206,6 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 
 		err = m.Write(offset, resultValue)
 		if err != nil {
-			// FIXME: Cleanup alloc memory
 			err = errors.Join(errors.New("can't write return value"), err)
 			return nil, nil, err
 		}
@@ -252,12 +251,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	return packedDatas, returnOffsets, nil
 }
 
-// cleanup function is responsible for releasing memory allocated during the execution
-// of the host function. It iterates through the parameters and return offsets, freeing
-// the associated memory allocations. The totalSize of memory released is calculated,
-// and details are logged.
-// cleanup will be ran at the end of the execution of host func callback.
-func (hf *HostFunction) cleanup(m ModuleProxy, params Params, returnOffsets map[uint32]uint32) error {
+func (hf *HostFunction) freeParams(m ModuleProxy, params Params) error {
 
 	totalSize := hf.allocationMap.TotalSize()
 
@@ -275,16 +269,6 @@ func (hf *HostFunction) cleanup(m ModuleProxy, params Params, returnOffsets map[
 		hf.allocationMap.Delete(param.Offset)
 	}
 
-	for offset := range returnOffsets {
-		err := m.Free(offset)
-		if err != nil {
-			err = errors.Join(errors.New("can't free offset of return value"), err)
-			return err
-		}
-
-		hf.allocationMap.Delete(offset)
-	}
-
 	hf.moduleConfig.log.Debug(
 		"cleanup: host func params and results",
 		"allocated_bytes", totalSize,
@@ -292,6 +276,21 @@ func (hf *HostFunction) cleanup(m ModuleProxy, params Params, returnOffsets map[
 		"namespace", hf.moduleConfig.Namespace,
 		"func", hf.Name,
 	)
+
+	return nil
+}
+
+func (hf *HostFunction) freeResults(m ModuleProxy, resultOffsets map[uint32]uint32) error {
+
+	for offsetI32 := range resultOffsets {
+		err := m.Free(offsetI32)
+		if err != nil {
+			err = errors.Join(errors.New("can't free offset of return value"), err)
+			return err
+		}
+
+		hf.allocationMap.Delete(offsetI32)
+	}
 
 	return nil
 }

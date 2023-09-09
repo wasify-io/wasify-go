@@ -45,7 +45,7 @@ func Arg(value any) ArgData {
 }
 
 // TODO: Update comment
-func ReadResults(packedDatas ArgData) []*Result {
+func ReadResults(packedDatas ResultOffset) []*Result {
 
 	if packedDatas == 0 {
 		return nil
