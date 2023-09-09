@@ -184,13 +184,13 @@ func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, any, error) {
 	case ValueTypeByte:
 		data, err = m.ReadByte(offset)
 	case ValueTypeI32:
-		data, err = m.ReadUint32Le(offset)
+		data, err = m.ReadUint32(offset)
 	case ValueTypeI64:
-		data, err = m.ReadUint64Le(offset)
+		data, err = m.ReadUint64(offset)
 	case ValueTypeF32:
-		data, err = m.ReadFloat32Le(offset)
+		data, err = m.ReadFloat32(offset)
 	case ValueTypeF64:
-		data, err = m.ReadFloat64Le(offset)
+		data, err = m.ReadFloat64(offset)
 	case ValueTypeString:
 		data, err = m.ReadString(offset, size)
 	default:
@@ -227,7 +227,7 @@ func (m *wazeroMemory) ReadByte(offset uint32) (byte, error) {
 	return buf, nil
 }
 
-func (m *wazeroMemory) ReadUint32Le(offset uint32) (uint32, error) {
+func (m *wazeroMemory) ReadUint32(offset uint32) (uint32, error) {
 	data, ok := m.mod.Memory().ReadUint32Le(offset)
 	if !ok {
 		err := fmt.Errorf("Memory.ReadUint32Le(%d, %d) out of range of memory size %d", offset, 4, m.Size())
@@ -238,7 +238,7 @@ func (m *wazeroMemory) ReadUint32Le(offset uint32) (uint32, error) {
 	return data, nil
 }
 
-func (m *wazeroMemory) ReadUint64Le(offset uint32) (uint64, error) {
+func (m *wazeroMemory) ReadUint64(offset uint32) (uint64, error) {
 	data, ok := m.mod.Memory().ReadUint64Le(offset)
 	if !ok {
 		err := fmt.Errorf("Memory.ReadUint64Le(%d, %d) out of range of memory size %d", offset, 8, m.Size())
@@ -249,7 +249,7 @@ func (m *wazeroMemory) ReadUint64Le(offset uint32) (uint64, error) {
 	return data, nil
 }
 
-func (m *wazeroMemory) ReadFloat32Le(offset uint32) (float32, error) {
+func (m *wazeroMemory) ReadFloat32(offset uint32) (float32, error) {
 	data, ok := m.mod.Memory().ReadFloat32Le(offset)
 	if !ok {
 		err := fmt.Errorf("Memory.ReadFloat32Le(%d, %d) out of range of memory size %d", offset, 4, m.Size())
@@ -260,7 +260,7 @@ func (m *wazeroMemory) ReadFloat32Le(offset uint32) (float32, error) {
 	return data, nil
 }
 
-func (m *wazeroMemory) ReadFloat64Le(offset uint32) (float64, error) {
+func (m *wazeroMemory) ReadFloat64(offset uint32) (float64, error) {
 	data, ok := m.mod.Memory().ReadFloat64Le(offset)
 	if !ok {
 		err := fmt.Errorf("Memory.ReadFloat64Le(%d, %d) out of range of memory size %d", offset, 8, m.Size())

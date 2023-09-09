@@ -2,6 +2,7 @@ package mdk
 
 import (
 	"fmt"
+	"reflect"
 	"runtime"
 	"unsafe"
 
@@ -44,7 +45,7 @@ func Arg(value any) ArgData {
 }
 
 // TODO: Update comment
-func Results(resultsOffset ArgData) []*Result {
+func ReadResults(resultsOffset ArgData) []*Result {
 
 	if resultsOffset == 0 {
 		return nil
@@ -66,48 +67,103 @@ func Results(resultsOffset ArgData) []*Result {
 
 	// Iterate over the packedData, unpack and read data of each element into a Result
 	for i, pd := range packedData {
-		data[i] = ReadOne(ArgData(pd))
+
+		v, s := ReadAny(ArgData(pd))
+
+		data[i] = &Result{
+			Size: s,
+			Data: v,
+		}
 	}
 
 	return data
 }
 
 // TODO: Update comment
-func ReadOne(packedData ArgData) *Result {
+func ReadAny(packedData ArgData) (any, uint32) {
 
-	if packedData == 0 {
-		return nil
-	}
-
-	valueType, offsetU32, size := utils.UnpackUI64(uint64(packedData))
-	offset := uint64(offsetU32)
-
+	valueType, _, size := utils.UnpackUI64(uint64(packedData))
 	var value any
 
 	switch valueType {
 	case types.ValueTypeBytes:
-		value = unsafe.Slice(ptrToData[byte](offset), size)
+		value, _ = ReadBytes(packedData)
 	case types.ValueTypeByte:
-		value = ptrToData[byte](offset)
+		value, _ = ReadBytes(packedData)
 	case types.ValueTypeI32:
-		value = ptrToData[uint32](offset)
+		value, _ = ReadBytes(packedData)
 	case types.ValueTypeI64:
-		value = ptrToData[uint64](offset)
+		value, _ = ReadBytes(packedData)
 	case types.ValueTypeF32:
-		value = ptrToData[float32](offset)
+		value, _ = ReadBytes(packedData)
 	case types.ValueTypeF64:
-		value = ptrToData[float64](offset)
+		value, _ = ReadBytes(packedData)
 	case types.ValueTypeString:
-		value = string(unsafe.String(ptrToData[byte](offset), size))
+		value, _ = ReadBytes(packedData)
 	default:
-		return nil
+		return nil, 0
 	}
 
-	return &Result{
-		Size: size,
-		Data: value,
-	}
+	return value, size
+}
 
+func ReadBytes(packedData ArgData) ([]byte, uint32) {
+	valueType, offsetU32, size := utils.UnpackUI64(uint64(packedData))
+	data := unsafe.Slice(ptrToData[byte](uint64(offsetU32)), size)
+	if valueType != types.ValueTypeBytes {
+		panic(fmt.Sprintf("data is not bytes: %s", reflect.ValueOf(data)))
+	}
+	return data, size
+}
+
+func ReadByte(packedData ArgData) byte {
+	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
+	data := *ptrToData[byte](uint64(offsetU32))
+	if valueType != types.ValueTypeBytes {
+		panic(fmt.Sprintf("data is not byte: %s", reflect.ValueOf(data)))
+	}
+	return data
+}
+
+func ReadI32(packedData ArgData) uint32 {
+	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
+	data := *ptrToData[uint32](uint64(offsetU32))
+	if valueType != types.ValueTypeString {
+		panic(fmt.Sprintf("data is not uint32: %s", reflect.ValueOf(data)))
+	}
+	return data
+}
+func ReadI64(packedData ArgData) uint64 {
+	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
+	data := *ptrToData[uint64](uint64(offsetU32))
+	if valueType != types.ValueTypeString {
+		panic(fmt.Sprintf("data is not uint32: %s", reflect.ValueOf(data)))
+	}
+	return data
+}
+func ReadF32(packedData ArgData) float32 {
+	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
+	data := *ptrToData[float32](uint64(offsetU32))
+	if valueType != types.ValueTypeString {
+		panic(fmt.Sprintf("data is not float32: %s", reflect.ValueOf(data)))
+	}
+	return data
+}
+func ReadF64(packedData ArgData) float64 {
+	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
+	data := *ptrToData[float64](uint64(offsetU32))
+	if valueType != types.ValueTypeString {
+		panic(fmt.Sprintf("data is not float64: %s", reflect.ValueOf(data)))
+	}
+	return data
+}
+func ReadString(packedData ArgData) (string, uint32) {
+	valueType, offsetU32, size := utils.UnpackUI64(uint64(packedData))
+	data := unsafe.String(ptrToData[byte](uint64(offsetU32)), size)
+	if valueType != types.ValueTypeString {
+		panic(fmt.Sprintf("data is not a string: %s", reflect.ValueOf(data)))
+	}
+	return data, size
 }
 
 // Alloc prepares data for interaction with WebAssembly by allocating the necessary memory.
@@ -127,13 +183,13 @@ func Alloc(data any) (uint64, error) {
 	case types.ValueTypeByte:
 		offset = AllocByte(data.(byte))
 	case types.ValueTypeI32:
-		offset = AllocUint32Le(data.(uint32))
+		offset = AllocUint32(data.(uint32))
 	case types.ValueTypeI64:
-		offset = AllocUint64Le(data.(uint64))
+		offset = AllocUint64(data.(uint64))
 	case types.ValueTypeF32:
-		offset = AllocFloat32Le(data.(float32))
+		offset = AllocFloat32(data.(float32))
 	case types.ValueTypeF64:
-		offset = AllocFloat64Le(data.(float64))
+		offset = AllocFloat64(data.(float64))
 	case types.ValueTypeString:
 		offset = AllocString(data.(string), offsetSize)
 	default:
@@ -149,16 +205,16 @@ func AllocBytes(data []byte, offsetSize uint32) uint64 {
 func AllocByte(data byte) uint64 {
 	return byteToLeakedPtr(data)
 }
-func AllocUint32Le(data uint32) uint64 {
+func AllocUint32(data uint32) uint64 {
 	return uint32ToLeakedPtr(data)
 }
-func AllocUint64Le(data uint64) uint64 {
+func AllocUint64(data uint64) uint64 {
 	return uint64ToLeakedPtr(data)
 }
-func AllocFloat32Le(data float32) uint64 {
+func AllocFloat32(data float32) uint64 {
 	return float32ToLeakedPtr(data)
 }
-func AllocFloat64Le(data float64) uint64 {
+func AllocFloat64(data float64) uint64 {
 	return float64ToLeakedPtr(data)
 }
 func AllocString(data string, offsetSize uint32) uint64 {
