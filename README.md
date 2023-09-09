@@ -4,6 +4,13 @@
 
 wasify simplifies communication with the WebAssembly System Interface (WASI), eliminating the need for developers to delve into intricate details or communicate using numbers, which is the standard method of interaction with modules. This library significantly eases the process of running and working with wasm modules, which has traditionally been a less straightforward task.
 
+
+---
+> [!WARNING]
+> - it mind the project is in still development mode and we may expect breaking changes
+> - Requires Go v1.21
+
+---
 ## Installation
 
 ```bash
