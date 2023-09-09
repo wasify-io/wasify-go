@@ -87,7 +87,7 @@ func TestArg(t *testing.T) {
 			valueType, _, size := utils.UnpackUI64(uint64(packedData))
 
 			if valueType != tt.valueType {
-				t.Errorf("ValueType does not match. Want %d, got %d", tt.valueType, valueType)
+				t.Errorf("ValueType does not match. Want %s, got %s", tt.valueType, valueType)
 			}
 
 			if size != tt.size {

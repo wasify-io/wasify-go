@@ -100,7 +100,7 @@ func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, any, error) {
 	case ValueTypeString:
 		data, err = m.ReadString(offset, size)
 	default:
-		err = fmt.Errorf("Unsupported read data type %d", valueType)
+		err = fmt.Errorf("Unsupported read data type %s", valueType)
 	}
 
 	if err != nil {

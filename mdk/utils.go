@@ -4,7 +4,6 @@ package mdk
 // #include <string.h>
 import "C"
 import (
-	"fmt"
 	"unsafe"
 
 	"github.com/wasify-io/wasify-go/internal/types"
@@ -92,7 +91,8 @@ func ptrToData[T any](ptr uint64) *T {
 func unpackDataAndCheckType(packedData ArgData, expectedType types.ValueType) (types.ValueType, uint32, uint32) {
 	valueType, offsetU32, size := utils.UnpackUI64(uint64(packedData))
 	if valueType != expectedType {
-		LogError(fmt.Sprintf("Unexpected data type. Expected %d, but got %d", expectedType, valueType))
+		LogError("Unexpected data type. Expected %s, but got %s", expectedType, valueType)
+		return 0, 0, 0
 	}
 	return valueType, offsetU32, size
 }

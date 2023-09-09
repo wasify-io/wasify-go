@@ -22,6 +22,29 @@ const (
 	ValueTypeString
 )
 
+func (v ValueType) String() string {
+	switch v {
+	case ValueTypePack:
+		return "ValueTypePack"
+	case ValueTypeBytes:
+		return "ValueTypeBytes"
+	case ValueTypeByte:
+		return "ValueTypeByte"
+	case ValueTypeI32:
+		return "ValueTypeI32"
+	case ValueTypeI64:
+		return "ValueTypeI64"
+	case ValueTypeF32:
+		return "ValueTypeF32"
+	case ValueTypeF64:
+		return "ValueTypeF64"
+	case ValueTypeString:
+		return "ValueTypeString"
+	}
+
+	return "udnefined"
+}
+
 // GetOffsetSizeAndDataTypeByConversion determines the memory size (offsetSize) and ValueType
 // of a given data. The function supports several data
 func GetOffsetSizeAndDataTypeByConversion(data any) (dataType ValueType, offsetSize uint32, err error) {

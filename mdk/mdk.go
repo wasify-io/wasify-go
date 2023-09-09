@@ -35,7 +35,8 @@ func Arg(value any) ArgData {
 
 	packedData, err := AllocPack(value)
 	if err != nil {
-		panic(err)
+		LogError("can't allocate memory", err.Error())
+		return 0
 	}
 
 	runtime.KeepAlive(value)
@@ -57,7 +58,9 @@ func ReadResults(packedDatas ResultOffset) []*Result {
 	t, offsetU32, size := utils.UnpackUI64(uint64(packedDatas))
 
 	if t != types.ValueTypePack {
-		panic(fmt.Sprintf("can't unpack data, data type is not a type of valueTypePack. expected %d, got %d", types.ValueTypePack, t))
+		err := fmt.Errorf("can't unpack data, data type is not a type of valueTypePack. expected %d, got %d", types.ValueTypePack, t)
+		LogError("can't read results", err.Error())
+		return nil
 	}
 
 	// calculate the number of elements in the array
@@ -113,7 +116,7 @@ func ReadAny(packedData ArgData) (any, uint32) {
 	case types.ValueTypeString:
 		value, size = ReadString(packedData)
 	default:
-		LogError("can't read the datatype: ", valueType)
+		LogError("can't read the datatype: %s", valueType)
 		return nil, 0
 	}
 
