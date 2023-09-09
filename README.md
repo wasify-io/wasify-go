@@ -92,12 +92,12 @@ func hostFunc(mdk.ArgData, mdk.ArgData) mdk.ResultOffset
 
 //export greet
 func greet() {
-    resultOffset := hostLog(mdk.Arg("Hello"), mdk.Arg(uint32(2023)))
+    resultOffset := hostFunc(mdk.Arg("Hello"), mdk.Arg(uint32(2023)))
 
     results := mdk.ReadResults(resultOffset)
 
     for i, result := range results {
-        mdk.Log("Guest func result %d: %s", i, string(result.Data))
+        mdk.Log("Guest func result %d: %s", i, result.Data)
     }
 }
 ```
