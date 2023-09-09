@@ -37,7 +37,7 @@ type Param struct {
 }
 type Params []Param
 
-// ReturnValue represents the value returned from a function.
+// Result represents the value returned from a function.
 type Result any
 type Results []Result
 
@@ -178,10 +178,10 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	// +1 len because for the offset which holds all offsets
 	returnOffsets := make(map[uint32]uint32, len(*results)+1)
 
-	for i, returnValue := range *results {
+	for i, resultValue := range *results {
 
-		// get offset size and result value type (ValueType) by result's returnValue
-		valueType, offsetSize, err := types.GetOffsetSizeAndDataTypeByConversion(returnValue)
+		// get offset size and result value type (ValueType) by result's resultValue
+		valueType, offsetSize, err := types.GetOffsetSizeAndDataTypeByConversion(resultValue)
 		if err != nil {
 			err = errors.Join(errors.New("can't convert result"), err)
 			return nil, nil, err
@@ -204,7 +204,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 		// for later cleanup.
 		hf.allocationMap.Store(offset, offsetSize)
 
-		err = m.Write(offset, returnValue)
+		err = m.Write(offset, resultValue)
 		if err != nil {
 			// FIXME: Cleanup alloc memory
 			err = errors.Join(errors.New("can't write return value"), err)

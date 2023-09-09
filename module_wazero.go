@@ -89,7 +89,10 @@ func (gf *wazeroGuestFunction) call(params ...uint64) (uint64, error) {
 	return stack[0], nil
 }
 
-// TODO: update comment
+// Invoke calls the guest function with the provided parameters. It manages the memory allocations needed
+// for parameter passing and the extraction of results. Memory reserved during this operation is handled
+// to ensure no leaks occur. Any errors encountered during the execution are enhanced with context
+// about the stage at which they happened.
 func (gf *wazeroGuestFunction) Invoke(params ...any) (uint64, error) {
 
 	var err error
@@ -108,7 +111,6 @@ func (gf *wazeroGuestFunction) Invoke(params ...any) (uint64, error) {
 	stack := make([]uint64, len(params))
 
 	for i, p := range params {
-		// get offset size and result value type (ValueType) by result's returnValue
 		valueType, offsetSize, err := types.GetOffsetSizeAndDataTypeByConversion(p)
 		if err != nil {
 			err = errors.Join(fmt.Errorf("Can't convert guest func param %s", gf.name), err)
@@ -491,7 +493,7 @@ func (mp *wazeroModuleProxy) Free(offset uint32) error {
 	return mp.wazeroModule.Memory().Free(offset)
 }
 
-// Return constructs and returns a set of ReturnValues using the provided ReturnValue arguments.
+// Return constructs and returns a set of Results using the provided Return arguments.
 // This method is used to create the return values in the host function,
 // that will be passed back to the WebAssembly module.
 //
@@ -499,7 +501,7 @@ func (mp *wazeroModuleProxy) Free(offset uint32) error {
 //
 //	{
 //		Name: "my_host_func",
-//		Callback: func(ctx context.Context, m wasify.ModuleProxy, params wasify.Params) wasify.ReturnValues {
+//		Callback: func(ctx context.Context, m wasify.ModuleProxy, params wasify.Params) wasify.Results {
 //			// ...
 //			return m.Return(
 //				[]byte("Hello"),

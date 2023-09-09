@@ -160,16 +160,16 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 		hf.allocationMap = memory.NewAllocationMap[uint32, uint32]()
 
 		// If hsot function has any return values, we pack it as a single uint64
-		var returnValuesPackedData = []ValueType{}
+		var resultValuesPackedData = []ValueType{}
 		if len(hf.Results) > 0 {
-			returnValuesPackedData = []ValueType{ValueTypeI64}
+			resultValuesPackedData = []ValueType{ValueTypeI64}
 		}
 
 		modBuilder = modBuilder.
 			NewFunctionBuilder().
 			WithGoModuleFunction(api.GoModuleFunc(wazeroHostFunctionCallback(wazeroModule, moduleConfig, &hf)),
 				r.convertToAPIValueTypes(hf.Params),
-				r.convertToAPIValueTypes(returnValuesPackedData),
+				r.convertToAPIValueTypes(resultValuesPackedData),
 			).
 			Export(hf.Name)
 
