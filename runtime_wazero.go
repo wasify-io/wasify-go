@@ -153,7 +153,7 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 		// Additionally, we set up an allocationMap specific to the host function, creating a map that stores
 		// offsets and sizes relevant to the host function's operations. This allows us to manage and clean up
 		// user resources effectively.
-		// We use allocationMap operations for Params provided in host function and Returns, which originally
+		// We use allocationMap operations for Params provided in host function and Results, which originally
 		// should be freed up.
 		// See host_function.go for more details.
 		hf.moduleConfig = moduleConfig
@@ -161,7 +161,7 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 
 		// If hsot function has any return values, we pack it as a single uint64
 		var returnValuesPackedData = []ValueType{}
-		if len(hf.Returns) > 0 {
+		if len(hf.Results) > 0 {
 			returnValuesPackedData = []ValueType{ValueTypeI64}
 		}
 
@@ -196,7 +196,7 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 		NewFunctionBuilder().
 		WithGoModuleFunction(api.GoModuleFunc(wazeroHostFunctionCallback(wazeroModule, moduleConfig, log)),
 			r.convertToAPIValueTypes(log.Params),
-			r.convertToAPIValueTypes(log.Returns),
+			r.convertToAPIValueTypes(log.Results),
 		).
 		Export(log.Name)
 

@@ -38,7 +38,7 @@ func TestNewModuleInstantaion(t *testing.T) {
 					return nil
 				},
 				Params:  []ValueType{},
-				Returns: []ValueType{},
+				Results: []ValueType{},
 			},
 		},
 	}

@@ -55,11 +55,11 @@ type HostFunction struct {
 	// from the host function when called from the guest.
 	Params []ValueType
 
-	// Returns specifies the types of values that the host function returns.
+	// Results specifies the types of values that the host function Results.
 	//
-	// The length of 'Returns' should match the expected number of returns
+	// The length of 'Results' should match the expected number of Results
 	// from the host function as used in the guest.
-	Returns []ValueType
+	Results []ValueType
 
 	// Allocation map to track parameter and return value allocations for host func.
 	allocationMap *memory.AllocationMap[uint32, uint32]
@@ -168,8 +168,8 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	}
 
 	// Return runtime error if return values does not match
-	if len(*results) != len(hf.Returns) {
-		return nil, nil, fmt.Errorf("return value missmatch %d != %d", len(*results), len(hf.Returns))
+	if len(*results) != len(hf.Results) {
+		return nil, nil, fmt.Errorf("return value missmatch %d != %d", len(*results), len(hf.Results))
 	}
 
 	// First, allocate memory for each byte slice and store the offsets in a slice
@@ -187,8 +187,8 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 			return nil, nil, err
 		}
 
-		if ValueType(valueType) != hf.Returns[i] {
-			return nil, nil, fmt.Errorf("return value does not match actual value %d != %d", valueType, hf.Returns[i])
+		if ValueType(valueType) != hf.Results[i] {
+			return nil, nil, fmt.Errorf("return value does not match actual value %d != %d", valueType, hf.Results[i])
 		}
 
 		// allocate memory for each value
@@ -286,9 +286,9 @@ func (hf *HostFunction) cleanup(m ModuleProxy, params Params, returnOffsets map[
 	}
 
 	hf.moduleConfig.log.Debug(
-		"cleanup: host func params and returns",
-		"total_bytes", totalSize,
-		"available_bytes", hf.allocationMap.TotalSize(),
+		"cleanup: host func params and results",
+		"allocated_bytes", totalSize,
+		"after_deallocate_bytes", hf.allocationMap.TotalSize(),
 		"namespace", hf.moduleConfig.Namespace,
 		"func", hf.Name,
 	)

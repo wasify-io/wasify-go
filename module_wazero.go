@@ -67,7 +67,7 @@ type wazeroGuestFunction struct {
 	memory Memory
 	// Allocation map to track parameter and return value allocations for host func.
 	allocationMap *memory.AllocationMap[uint32, uint32]
-	*ModuleConfig
+	moduleConfig  *ModuleConfig
 }
 
 // call invokes wazero's CallWithStack method, which returns ome uint64 message,
@@ -82,7 +82,7 @@ func (gf *wazeroGuestFunction) call(params ...uint64) (uint64, error) {
 	err := gf.fn.CallWithStack(gf.ctx, stack[:])
 	if err != nil {
 		err = errors.Join(fmt.Errorf("An error occurred while attempting to invoke the guest function %s", gf.name), err)
-		gf.log.Error(err.Error())
+		gf.moduleConfig.log.Error(err.Error())
 		return 0, err
 	}
 
@@ -92,12 +92,18 @@ func (gf *wazeroGuestFunction) call(params ...uint64) (uint64, error) {
 // TODO: update comment
 func (gf *wazeroGuestFunction) Invoke(params ...any) (uint64, error) {
 
-	log := gf.log.Info
-	if gf.Namespace == "malloc" || gf.Namespace == "free" {
-		log = gf.log.Debug
+	var err error
+
+	log := gf.moduleConfig.log.Info
+	if gf.moduleConfig.Namespace == "malloc" || gf.moduleConfig.Namespace == "free" {
+		log = gf.moduleConfig.log.Debug
 	}
 
-	log("calling guest function", "namespace", gf.Namespace, "function", gf.name, "params", params)
+	log("calling guest function", "namespace", gf.moduleConfig.Namespace, "function", gf.name, "params", params)
+
+	defer func() {
+		err = gf.cleanup()
+	}()
 
 	stack := make([]uint64, len(params))
 
@@ -113,7 +119,7 @@ func (gf *wazeroGuestFunction) Invoke(params ...any) (uint64, error) {
 		offsetI32, err := gf.memory.Malloc(offsetSize)
 		if err != nil {
 			err = errors.Join(fmt.Errorf("An error occurred while attempting to alloc memory for guest func param in: %s", gf.name), err)
-			gf.log.Error(err.Error())
+			gf.moduleConfig.log.Error(err.Error())
 			return 0, err
 		}
 
@@ -128,7 +134,7 @@ func (gf *wazeroGuestFunction) Invoke(params ...any) (uint64, error) {
 		stack[i], err = utils.PackUI64(valueType, offsetI32, offsetSize)
 		if err != nil {
 			err = errors.Join(fmt.Errorf("An error occurred while attempting to pack data for guest func param in:  %s", gf.name), err)
-			gf.log.Error(err.Error())
+			gf.moduleConfig.log.Error(err.Error())
 			return 0, err
 		}
 
@@ -137,27 +143,39 @@ func (gf *wazeroGuestFunction) Invoke(params ...any) (uint64, error) {
 	res, err := gf.call(stack...)
 	if err != nil {
 		err = errors.Join(fmt.Errorf("An error occurred while attempting to invoke the guest function: %s", gf.name), err)
-		gf.log.Error(err.Error())
+		gf.moduleConfig.log.Error(err.Error())
 		return 0, err
 	}
 
-	return res, nil
+	return res, err
 }
 
-// Free releases the memory segments that were reserved by the
+// cleanup releases the memory segments that were reserved by the
 // guest function for parameter passing and result retrieval.
 // finishes freeing memory and returns first error (if it exists).
-func (gf *wazeroGuestFunction) Free() error {
+func (gf *wazeroGuestFunction) cleanup() error {
 
 	var firstErr error
+
+	totalSize := gf.allocationMap.TotalSize()
 
 	gf.allocationMap.Range(func(key, value uint32) bool {
 		err := gf.memory.Free(key)
 		if firstErr == nil {
 			firstErr = err
 		}
+
+		gf.allocationMap.Delete(key)
 		return true
 	})
+
+	gf.moduleConfig.log.Debug(
+		"cleanup: guest func params and results",
+		"allocated_bytes", totalSize,
+		"after_deallocate_bytes", gf.allocationMap.TotalSize(),
+		"namespace", gf.moduleConfig.Namespace,
+		"func", gf.name,
+	)
 
 	return firstErr
 

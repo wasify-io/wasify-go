@@ -23,8 +23,8 @@ type ModuleProxy interface {
 
 type GuestFunction interface {
 	Invoke(args ...any) (uint64, error)
-	Free() error
 	call(args ...uint64) (uint64, error)
+	cleanup() error
 }
 
 type Memory interface {

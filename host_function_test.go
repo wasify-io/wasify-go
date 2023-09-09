@@ -71,7 +71,7 @@ func TestHostFunctions(t *testing.T) {
 					wasify.ValueTypeF64,
 					wasify.ValueTypeString,
 				},
-				Returns: []wasify.ValueType{
+				Results: []wasify.ValueType{
 					wasify.ValueTypeBytes,
 					wasify.ValueTypeByte,
 					wasify.ValueTypeI32,
