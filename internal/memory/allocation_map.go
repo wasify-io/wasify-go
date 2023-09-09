@@ -12,13 +12,13 @@ import (
 // within host functions. These allocations can be automatically cleared later,
 // relieving users from the need to manually manage them.
 type AllocationMap[K uint32 | uint64, V uint32 | uint64] struct {
-	Map  sync.Map
+	Map  *sync.Map
 	Size V
 }
 
 func NewAllocationMap[K uint32 | uint64, V uint32 | uint64]() *AllocationMap[K, V] {
 	return &AllocationMap[K, V]{
-		Map: sync.Map{},
+		Map: &sync.Map{},
 	}
 }
 
@@ -29,11 +29,17 @@ func (am *AllocationMap[K, V]) Store(offset K, size V) {
 
 func (am *AllocationMap[K, V]) Load(offset K) (V, bool) {
 	v, ok := am.Map.Load(offset)
+	if !ok {
+		return 0, false
+	}
 	return v.(V), ok
 }
 
 func (am *AllocationMap[K, V]) Delete(offset K) {
-	v, _ := am.Map.LoadAndDelete(offset)
+	v, ok := am.Map.LoadAndDelete(offset)
+	if !ok {
+		return
+	}
 	am.Size -= v.(V)
 }
 
