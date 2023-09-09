@@ -34,7 +34,7 @@ type Result struct {
 // The memory management is handled on the host side, where the allocated memory is automatically deallocated.
 func Arg(value any) ArgData {
 
-	packedData, err := Alloc(value)
+	packedData, err := AllocPack(value)
 	if err != nil {
 		panic(err)
 	}
@@ -166,9 +166,9 @@ func ReadString(packedData ArgData) (string, uint32) {
 	return data, size
 }
 
-// Alloc prepares data for interaction with WebAssembly by allocating the necessary memory.
-// It accepts a generic input and returns a uint64 value that combines the memory offset and size.
-func Alloc(data any) (uint64, error) {
+// AllocPack prepares data for interaction with WebAssembly by allocating the necessary memory.
+// It accepts a generic input and returns a uint64 value that combines the value type, memory offset, size.
+func AllocPack(data any) (uint64, error) {
 
 	dataType, offsetSize, err := types.GetOffsetSizeAndDataTypeByConversion(data)
 	if err != nil {
