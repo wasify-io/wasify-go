@@ -16,13 +16,11 @@ var wasm_emptyHostFunc []byte
 func TestNewModuleInstantaion(t *testing.T) {
 
 	testRuntimeConfig := RuntimeConfig{
-		Runtime:     RuntimeWazero,
-		LogSeverity: LogError,
+		Runtime: RuntimeWazero,
 	}
 
 	testModuleConfig := ModuleConfig{
-		Namespace:   "empty_host_func",
-		LogSeverity: LogError,
+		Namespace: "empty_host_func",
 		FSConfig: FSConfig{
 			Enabled:  true,
 			HostDir:  "test/_data/",
@@ -62,11 +60,8 @@ func TestNewModuleInstantaion(t *testing.T) {
 		module, err := runtime.NewModule(ctx, &testModuleConfig)
 		assert.NoError(t, err, "Expected no error while creating module")
 		assert.NotNil(t, module, "Expected a non-nil module")
-
-		defer func() {
-			err = module.Close(ctx)
-			assert.Nil(t, err, "Expected no error while closing module")
-		}()
+		err = module.Close(ctx)
+		assert.Nil(t, err, "Expected no error while closing module")
 	})
 
 	t.Run("failure due to invalid runtime", func(t *testing.T) {
@@ -76,6 +71,24 @@ func TestNewModuleInstantaion(t *testing.T) {
 		runtime, err := NewRuntime(ctx, &invalidConfig)
 		assert.Error(t, err, "Expected an error due to invalid config")
 		assert.Nil(t, runtime, "Expected a nil runtime due to invalid config")
+	})
+
+	t.Run("failure due to invalid namespace", func(t *testing.T) {
+		runtime, err := NewRuntime(ctx, &testRuntimeConfig)
+		assert.NoError(t, err, "Expected no error while creating runtime")
+
+		defer func() {
+			err = runtime.Close(ctx)
+			assert.NoError(t, err, "Expected no error while closing runtime")
+		}()
+
+		invalidtestModuleConfig := testModuleConfig
+		invalidtestModuleConfig.Namespace = "_invalid_namespace_"
+
+		module, err := runtime.NewModule(ctx, &invalidtestModuleConfig)
+		assert.Error(t, err)
+		assert.Nil(t, module)
+
 	})
 
 	t.Run("failure due to invalid hash", func(t *testing.T) {
@@ -92,10 +105,7 @@ func TestNewModuleInstantaion(t *testing.T) {
 
 		module, err := runtime.NewModule(ctx, &invalidtestModuleConfig)
 		assert.Error(t, err)
-
-		defer func() {
-			assert.Nil(t, module)
-		}()
+		assert.Nil(t, module)
 	})
 
 	t.Run("failure due to invalid wasm", func(t *testing.T) {
