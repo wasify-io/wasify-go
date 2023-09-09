@@ -7,7 +7,7 @@ wasify simplifies communication with the WebAssembly System Interface (WASI), el
 
 ---
 > [!WARNING]
-> - it mind the project is in still development mode and we may expect breaking changes
+> - **The project is still being worked on, and there might be significant changes coming;**
 > - Requires Go v1.21
 
 ---
