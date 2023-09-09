@@ -70,18 +70,8 @@ type wazeroGuestFunction struct {
 	*ModuleConfig
 }
 
-// Invoke calls the function with the given parameters and returns any
-// results or an error for any failure looking up or invoking the function.
-//
-
-func (gf *wazeroGuestFunction) Invoke(params ...uint64) (uint64, error) {
-
-	log := gf.log.Info
-	if gf.Namespace == "malloc" || gf.Namespace == "free" {
-		log = gf.log.Debug
-	}
-
-	log("Calling the function", "name", gf.Namespace, "module", gf.Namespace, "params", params)
+// TODO: update comment
+func (gf *wazeroGuestFunction) call(params ...uint64) (uint64, error) {
 
 	stack := make([]uint64, len(params)+1)
 	copy(stack, params)
@@ -97,7 +87,7 @@ func (gf *wazeroGuestFunction) Invoke(params ...uint64) (uint64, error) {
 }
 
 // TODO: update comment
-func (gf *wazeroGuestFunction) InvokeWithArgs(params ...any) (uint64, error) {
+func (gf *wazeroGuestFunction) Invoke(params ...any) (uint64, error) {
 
 	log := gf.log.Info
 	if gf.Namespace == "malloc" || gf.Namespace == "free" {
@@ -141,14 +131,14 @@ func (gf *wazeroGuestFunction) InvokeWithArgs(params ...any) (uint64, error) {
 
 	}
 
-	err := gf.fn.CallWithStack(gf.ctx, stack[:])
+	res, err := gf.call(stack...)
 	if err != nil {
 		err = errors.Join(fmt.Errorf("An error occurred while attempting to invoke the guest function: %s", gf.name), err)
 		gf.log.Error(err.Error())
 		return 0, err
 	}
 
-	return stack[0], nil
+	return res, nil
 }
 
 // Memory retrieves a Memory instance associated with the wazeroModule.
@@ -406,7 +396,7 @@ func (r *wazeroMemory) Size() uint32 {
 // Note: Always make sure to free memory after allocation.
 func (m *wazeroMemory) Malloc(size uint32) (uint32, error) {
 
-	r, err := m.wazeroModule.GuestFunction(m.wazeroModule.ctx, "malloc").Invoke(uint64(size))
+	r, err := m.wazeroModule.GuestFunction(m.wazeroModule.ctx, "malloc").call(uint64(size))
 	if err != nil {
 		err = errors.Join(fmt.Errorf("can't invoke malloc function "), err)
 		return 0, err
@@ -424,7 +414,7 @@ func (m *wazeroMemory) Malloc(size uint32) (uint32, error) {
 // In most cases, parameter `offset` is the value returned from Malloc func.
 func (m *wazeroMemory) Free(offset uint32) error {
 
-	_, err := m.wazeroModule.GuestFunction(m.ModuleConfig.ctx, "free").Invoke(uint64(offset))
+	_, err := m.wazeroModule.GuestFunction(m.ModuleConfig.ctx, "free").call(uint64(offset))
 
 	if err != nil {
 		err = errors.Join(fmt.Errorf("can't invoke free function"), err)
