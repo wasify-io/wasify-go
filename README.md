@@ -97,7 +97,7 @@ func greet() {
     results := mdk.ReadResults(resultOffset)
 
     for i, result := range results {
-        mdk.Log("Guest func result %d: %s\r\n", i, string(result.Data))
+        mdk.Log("Guest func result %d: %s", i, string(result.Data))
     }
 }
 ```

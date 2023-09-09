@@ -75,6 +75,12 @@ func stringToLeakedPtr(data string, offsetSize uint32) (offset uint64) {
 	return bytesToLeakedPtr(byteSlice, offsetSize)
 }
 
+// ptrToData converts a given memory address (ptr) into a pointer of type T.
+// This function uses unsafe operations to cast the provided uint64 pointer
+// to a pointer of the desired type, allowing for direct memory access to the
+// underlying data.
+//
+// return a pointer of type T pointing to the data at the specified memory address.
 func ptrToData[T any](ptr uint64) *T {
 	return (*T)(unsafe.Pointer(uintptr(ptr)))
 }

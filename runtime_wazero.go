@@ -130,7 +130,7 @@ func (r *wazeroRuntime) convertToAPIValueTypes(types []ValueType) []api.ValueTyp
 
 // instantiateHostFunctions sets up and exports host functions for the module using the wazero runtime.
 //
-// It configures host function callbacks, value types, and exports.
+// It configures host function callbacks, data types, and exports.
 func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModule *wazeroModule, moduleConfig *ModuleConfig) error {
 
 	modBuilder := r.runtime.NewHostModuleBuilder(moduleConfig.Namespace)

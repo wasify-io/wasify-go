@@ -180,7 +180,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 
 	for i, resultValue := range *results {
 
-		// get offset size and result value type (ValueType) by result's resultValue
+		// get offset size and result data type (ValueType) by result's resultValue
 		valueType, offsetSize, err := types.GetOffsetSizeAndDataTypeByConversion(resultValue)
 		if err != nil {
 			err = errors.Join(errors.New("can't convert result"), err)
