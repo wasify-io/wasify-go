@@ -7,7 +7,9 @@ import (
 	"reflect"
 
 	"github.com/tetratelabs/wazero/api"
-	"github.com/wasify-io/wasify-go/mdk"
+	"github.com/wasify-io/wasify-go/internal/memory"
+	"github.com/wasify-io/wasify-go/internal/types"
+	"github.com/wasify-io/wasify-go/internal/utils"
 )
 
 // The wazeroModule struct combines an instantiated wazero modul
@@ -48,27 +50,38 @@ func (m *wazeroModule) GuestFunction(ctx context.Context, name string) GuestFunc
 		m.log.Warn("exported function does not exist", "function", name, "module", m.Namespace)
 	}
 
-	return &wazeroGuestFunction{ctx, fn, name, m.ModuleConfig}
+	return &wazeroGuestFunction{
+		ctx,
+		fn,
+		name,
+		m.Memory(),
+		memory.NewAllocationMap[uint32, uint32](),
+		m.ModuleConfig,
+	}
 }
 
 type wazeroGuestFunction struct {
-	ctx  context.Context
-	fn   api.Function
-	name string
+	ctx    context.Context
+	fn     api.Function
+	name   string
+	memory Memory
+	// Allocation map to track parameter and return value allocations for host func.
+	allocationMap *memory.AllocationMap[uint32, uint32]
 	*ModuleConfig
 }
 
 // Invoke calls the function with the given parameters and returns any
 // results or an error for any failure looking up or invoking the function.
 //
-// If the function name is not "malloc" or "free", it logs the function call details.
-// It omits logging for "malloc" and "free" functions due to potential high frequency,
-// which could lead to excessive log entries and complicate debugging for host funcs.
+
 func (gf *wazeroGuestFunction) Invoke(params ...uint64) (uint64, error) {
 
-	if gf.Namespace != "malloc" && gf.Namespace != "free" {
-		gf.log.Info("calling function", "name", gf.Namespace, "module", gf.Namespace, "params", params)
+	log := gf.log.Info
+	if gf.Namespace == "malloc" || gf.Namespace == "free" {
+		log = gf.log.Debug
 	}
+
+	log("Calling the function", "name", gf.Namespace, "module", gf.Namespace, "params", params)
 
 	stack := make([]uint64, len(params)+1)
 	copy(stack, params)
@@ -80,7 +93,60 @@ func (gf *wazeroGuestFunction) Invoke(params ...uint64) (uint64, error) {
 		return 0, err
 	}
 
-	fmt.Println()
+	return stack[0], nil
+}
+
+// TODO: update comment
+func (gf *wazeroGuestFunction) InvokeWithArgs(params ...any) (uint64, error) {
+
+	log := gf.log.Info
+	if gf.Namespace == "malloc" || gf.Namespace == "free" {
+		log = gf.log.Debug
+	}
+
+	log("Calling function", "name", gf.Namespace, "module", gf.Namespace, "params", params)
+
+	stack := make([]uint64, len(params))
+
+	for i, p := range params {
+		// get offset size and result value type (ValueType) by result's returnValue
+		valueType, offsetSize, err := types.GetOffsetSizeAndDataTypeByConversion(p)
+		if err != nil {
+			err = errors.Join(fmt.Errorf("Can't convert guest func param %s", gf.name), err)
+			return 0, err
+		}
+
+		// allocate memory for each value
+		offsetI32, err := gf.memory.Malloc(offsetSize)
+		if err != nil {
+			err = errors.Join(fmt.Errorf("An error occurred while attempting to alloc memory for guest func param in: %s", gf.name), err)
+			gf.log.Error(err.Error())
+			return 0, err
+		}
+
+		gf.allocationMap.Store(offsetI32, offsetSize)
+
+		err = gf.memory.Write(offsetI32, p)
+		if err != nil {
+			err = errors.Join(errors.New("can't write arg to"), err)
+			return 0, err
+		}
+
+		stack[i], err = utils.PackUI64(valueType, offsetI32, offsetSize)
+		if err != nil {
+			err = errors.Join(fmt.Errorf("An error occurred while attempting to pack data for guest func param in:  %s", gf.name), err)
+			gf.log.Error(err.Error())
+			return 0, err
+		}
+
+	}
+
+	err := gf.fn.CallWithStack(gf.ctx, stack[:])
+	if err != nil {
+		err = errors.Join(fmt.Errorf("An error occurred while attempting to invoke the guest function: %s", gf.name), err)
+		gf.log.Error(err.Error())
+		return 0, err
+	}
 
 	return stack[0], nil
 }
@@ -110,7 +176,7 @@ func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, any, error) {
 	var data any
 
 	// Unpack the packedData to extract offset and size values.
-	valueType, offset, size := mdk.UnpackUI64(packedData)
+	valueType, offset, size := utils.UnpackUI64(packedData)
 
 	switch ValueType(valueType) {
 	case ValueTypeBytes:

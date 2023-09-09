@@ -8,7 +8,6 @@ import (
 	"github.com/wasify-io/wasify-go/internal/memory"
 	"github.com/wasify-io/wasify-go/internal/types"
 	"github.com/wasify-io/wasify-go/internal/utils"
-	"github.com/wasify-io/wasify-go/mdk"
 )
 
 // ValueType represents the type of value used in function parameters and returns.
@@ -207,12 +206,13 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 
 		err = m.Write(offset, returnValue)
 		if err != nil {
+			// FIXME: Cleanup alloc memory
 			err = errors.Join(errors.New("can't write return value"), err)
 			return nil, nil, err
 		}
 
 		// Pack the offset and size into a single uint64
-		packedDatas[i], err = mdk.PackUI64(valueType, offset, offsetSize)
+		packedDatas[i], err = utils.PackUI64(valueType, offset, offsetSize)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -238,7 +238,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	}
 
 	// Final packed data, which contains offset and size of packedDatas slice
-	packedData, err := mdk.PackUI64(types.ValueTypePack, offset, offsetSize)
+	packedData, err := utils.PackUI64(types.ValueTypePack, offset, offsetSize)
 	if err != nil {
 		return nil, nil, err
 	}

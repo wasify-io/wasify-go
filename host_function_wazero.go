@@ -64,7 +64,6 @@ func wazeroHostFunctionCallback(wazeroModule *wazeroModule, moduleConfig *Module
 		params, err := hf.convertParamsToStruct(ctx, moduleProxy, stack)
 		if err != nil {
 			moduleConfig.log.Error(err.Error(), "func", hf.Name, "module", wazeroModule.Namespace)
-			panic(err)
 		}
 
 		// user defined host function callback
@@ -75,7 +74,6 @@ func wazeroHostFunctionCallback(wazeroModule *wazeroModule, moduleConfig *Module
 		if err != nil {
 			err = errors.Join(errors.New("function executed, but can't write to the memory"), err)
 			moduleConfig.log.Error(err.Error(), "func", hf.Name, "module", wazeroModule.Namespace)
-			panic(err)
 		}
 
 		err = hf.cleanup(moduleProxy, params, returnOffsets)

@@ -51,7 +51,7 @@ func TestUint64ArrayToBytes(t *testing.T) {
 }
 
 func TestAllocationMap(t *testing.T) {
-	am := memory.NewAllocationMap[int, int]()
+	am := memory.NewAllocationMap[uint32, uint32]()
 	am.Store(1, 100)
 	am.Store(2, 200)
 

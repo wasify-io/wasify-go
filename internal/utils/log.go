@@ -3,10 +3,6 @@ package utils
 import (
 	"log/slog"
 	"os"
-	"time"
-
-	"github.com/lmittmann/tint"
-	"github.com/mattn/go-isatty"
 )
 
 type LogSeverity uint8
@@ -28,12 +24,11 @@ var logMap = map[LogSeverity]slog.Level{
 // NewLogger returns new slog ref
 func NewLogger(severity LogSeverity) *slog.Logger {
 
-	w := os.Stderr
-	logger := slog.New(tint.NewHandler(w, &tint.Options{
-		Level:      GetlogLevel(severity),
-		TimeFormat: time.Kitchen,
-		NoColor:    !isatty.IsTerminal(w.Fd()),
-	}))
+	logger := slog.New(slog.NewTextHandler(os.Stdout,
+		&slog.HandlerOptions{
+			Level:     GetlogLevel(severity),
+			AddSource: severity == LogDebug,
+		}))
 
 	return logger
 }
