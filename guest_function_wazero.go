@@ -37,7 +37,18 @@ func (gf *wazeroGuestFunction) call(params ...uint64) (uint64, error) {
 	return stack[0], nil
 }
 
-// Invoke calls the guest function with the provided parameters.
+// Invoke calls the guest function with the provided parameters, taking care of
+// all the necessary memory management (except memory free) and data conversion.
+// Ensures the data types are compatible, writes data into the WebAssembly memory,
+// and invokes the guest function.
+// Each parameter is converted to its corresponding packedData format, which
+// contains a compact representation of its memory offset, size, and type information.
+// This packedData is written into the WebAssembly memory, enabling the
+// guest function to correctly interpret and utilize the data. Post invocation,
+//
+// Example:
+//
+// res, err := module.GuestFunction(ctx, "guestTest").Invoke([]byte("bytes!"), uint32(32), float32(32.0), "Wasify")
 func (gf *wazeroGuestFunction) Invoke(params ...any) (uint64, error) {
 
 	var err error

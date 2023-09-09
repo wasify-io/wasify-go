@@ -24,9 +24,8 @@ var logMap = map[LogSeverity]slog.Level{
 // NewLogger returns new slog ref
 func NewLogger(severity LogSeverity) *slog.Logger {
 
-	logger := slog.New(slog.NewTextHandler(os.Stdin, &slog.HandlerOptions{
-		Level:     GetlogLevel(severity),
-		AddSource: severity == LogDebug,
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: GetlogLevel(severity),
 	}))
 
 	return logger

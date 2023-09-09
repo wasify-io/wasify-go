@@ -2,7 +2,6 @@ package mdk
 
 import (
 	"fmt"
-	"reflect"
 	"runtime"
 	"unsafe"
 
@@ -11,7 +10,7 @@ import (
 )
 
 // ArgData represents an offset into WebAssembly memory that refers to an argument's location.
-// This packed representation consists of a memory offset and the size of the argument data.
+// This packed data representation consists of a data type, offset and the size of the argument data.
 type ArgData uint64
 
 // ResultOffset represents an offset into WebAssembly memory for function results.
@@ -36,7 +35,8 @@ func Arg(value any) ArgData {
 
 	packedData, err := AllocPack(value)
 	if err != nil {
-		panic(err)
+		LogError("can't allocate memory", err.Error())
+		return 0
 	}
 
 	runtime.KeepAlive(value)
@@ -44,8 +44,12 @@ func Arg(value any) ArgData {
 	return ArgData(packedData)
 }
 
-// TODO: Update comment
-func ReadResults(packedDatas ArgData) []*Result {
+// ReadResults extracts an array of Result from the given packed data.
+// It first checks the type of packed data to ensure it's of type ValueTypePack.
+// If the type is valid, it calculates the number of elements in the data,
+// reads the packed pointers and sizes, and then extracts the actual data
+// for each element, storing it in a Result struct.
+func ReadResults(packedDatas ResultOffset) []*Result {
 
 	if packedDatas == 0 {
 		return nil
@@ -54,7 +58,9 @@ func ReadResults(packedDatas ArgData) []*Result {
 	t, offsetU32, size := utils.UnpackUI64(uint64(packedDatas))
 
 	if t != types.ValueTypePack {
-		panic(fmt.Sprintf("can't unpack data, value type is not a type of valueTypePack. expected %d, got %d", types.ValueTypePack, t))
+		err := fmt.Errorf("can't unpack data, data type is not a type of valueTypePack. expected %d, got %d", types.ValueTypePack, t)
+		LogError("can't read results", err.Error())
+		return nil
 	}
 
 	// calculate the number of elements in the array
@@ -79,7 +85,16 @@ func ReadResults(packedDatas ArgData) []*Result {
 	return data
 }
 
-// TODO: Update comment
+// ReadAny reads the given packed data and extracts the underlying value based on its type.
+// The function supports reading various types including bytes, integers, floats, and strings.
+// It returns the extracted value and its size.
+// Example:
+//
+//	func greet(var1, var2 mdk.ArgData) {
+//		res1, size := mdk.ReadAny(var1)
+//		res2 := mdk.ReadI32(var2)
+//
+// ...
 func ReadAny(packedData ArgData) (any, uint32) {
 
 	valueType, _, size := utils.UnpackUI64(uint64(packedData))
@@ -89,18 +104,19 @@ func ReadAny(packedData ArgData) (any, uint32) {
 	case types.ValueTypeBytes:
 		value, _ = ReadBytes(packedData)
 	case types.ValueTypeByte:
-		value, _ = ReadBytes(packedData)
+		value = ReadByte(packedData)
 	case types.ValueTypeI32:
-		value, _ = ReadBytes(packedData)
+		value = ReadI32(packedData)
 	case types.ValueTypeI64:
-		value, _ = ReadBytes(packedData)
+		value = ReadI64(packedData)
 	case types.ValueTypeF32:
-		value, _ = ReadBytes(packedData)
+		value = ReadF32(packedData)
 	case types.ValueTypeF64:
-		value, _ = ReadBytes(packedData)
+		value = ReadF64(packedData)
 	case types.ValueTypeString:
-		value, _ = ReadBytes(packedData)
+		value, size = ReadString(packedData)
 	default:
+		LogError("can't read the datatype: %s", valueType)
 		return nil, 0
 	}
 
@@ -108,66 +124,43 @@ func ReadAny(packedData ArgData) (any, uint32) {
 }
 
 func ReadBytes(packedData ArgData) ([]byte, uint32) {
-	valueType, offsetU32, size := utils.UnpackUI64(uint64(packedData))
-	data := unsafe.Slice(ptrToData[byte](uint64(offsetU32)), size)
-	if valueType != types.ValueTypeBytes {
-		LogError(fmt.Sprintf("data is not bytes: %s", reflect.ValueOf(data)))
-	}
-	return data, size
+	_, offsetU32, size := unpackDataAndCheckType(packedData, types.ValueTypeBytes)
+	return unsafe.Slice(ptrToData[byte](uint64(offsetU32)), int(size)), size
 }
 
 func ReadByte(packedData ArgData) byte {
-	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
-	data := *ptrToData[byte](uint64(offsetU32))
-	if valueType != types.ValueTypeByte {
-		LogError(fmt.Sprintf("data is not byte: %s", reflect.ValueOf(data)))
-	}
-	return data
+	_, offsetU32, _ := unpackDataAndCheckType(packedData, types.ValueTypeByte)
+	return *ptrToData[byte](uint64(offsetU32))
 }
 
 func ReadI32(packedData ArgData) uint32 {
-	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
-	data := *ptrToData[uint32](uint64(offsetU32))
-	if valueType != types.ValueTypeI32 {
-		LogError(fmt.Sprintf("data is not uint32: %s", reflect.ValueOf(data)))
-	}
-	return data
+	_, offsetU32, _ := unpackDataAndCheckType(packedData, types.ValueTypeI32)
+	return *ptrToData[uint32](uint64(offsetU32))
 }
+
 func ReadI64(packedData ArgData) uint64 {
-	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
-	data := *ptrToData[uint64](uint64(offsetU32))
-	if valueType != types.ValueTypeI64 {
-		LogError(fmt.Sprintf("data is not uint32: %s", reflect.ValueOf(data)))
-	}
-	return data
+	_, offsetU32, _ := unpackDataAndCheckType(packedData, types.ValueTypeI64)
+	return *ptrToData[uint64](uint64(offsetU32))
 }
+
 func ReadF32(packedData ArgData) float32 {
-	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
-	data := *ptrToData[float32](uint64(offsetU32))
-	if valueType != types.ValueTypeI32 {
-		LogError(fmt.Sprintf("data is not float32: %s", reflect.ValueOf(data)))
-	}
-	return data
+	_, offsetU32, _ := unpackDataAndCheckType(packedData, types.ValueTypeF32)
+	return *ptrToData[float32](uint64(offsetU32))
 }
+
 func ReadF64(packedData ArgData) float64 {
-	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
-	data := *ptrToData[float64](uint64(offsetU32))
-	if valueType != types.ValueTypeI64 {
-		LogError(fmt.Sprintf("data is not float64: %s", reflect.ValueOf(data)))
-	}
-	return data
+	_, offsetU32, _ := unpackDataAndCheckType(packedData, types.ValueTypeF64)
+	return *ptrToData[float64](uint64(offsetU32))
 }
+
 func ReadString(packedData ArgData) (string, uint32) {
-	valueType, offsetU32, size := utils.UnpackUI64(uint64(packedData))
-	data := unsafe.String(ptrToData[byte](uint64(offsetU32)), size)
-	if valueType != types.ValueTypeString {
-		LogError(fmt.Sprintf("data is not a string: %s", reflect.ValueOf(data)))
-	}
-	return data, size
+	_, offsetU32, size := unpackDataAndCheckType(packedData, types.ValueTypeString)
+	data := unsafe.Slice(ptrToData[byte](uint64(offsetU32)), int(size))
+	return string(data), size
 }
 
 // AllocPack prepares data for interaction with WebAssembly by allocating the necessary memory.
-// It accepts a generic input and returns a uint64 value that combines the value type, memory offset, size.
+// It accepts a generic input and returns a uint64 value that combines the data type, memory offset, size.
 func AllocPack(data any) (uint64, error) {
 
 	dataType, offsetSize, err := types.GetOffsetSizeAndDataTypeByConversion(data)
@@ -222,6 +215,13 @@ func AllocString(data string, offsetSize uint32) uint64 {
 }
 
 // Free frees the memory.
+// // exported function
+//
+//	func greet(var1, var2 mdk.ArgData) {
+//		defer Free(var1, var2)
+//
+// ...
+// }
 func Free(packedDatas ...ArgData) {
 	for _, p := range packedDatas {
 		_, offset, _ := utils.UnpackUI64(uint64(p))

@@ -5,7 +5,6 @@ package wasify
 import (
 	"context"
 	"errors"
-	"os"
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
@@ -131,7 +130,7 @@ func (r *wazeroRuntime) convertToAPIValueTypes(types []ValueType) []api.ValueTyp
 
 // instantiateHostFunctions sets up and exports host functions for the module using the wazero runtime.
 //
-// It configures host function callbacks, value types, and exports.
+// It configures host function callbacks, data types, and exports.
 func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModule *wazeroModule, moduleConfig *ModuleConfig) error {
 
 	modBuilder := r.runtime.NewHostModuleBuilder(moduleConfig.Namespace)
@@ -224,9 +223,6 @@ func (r *wazeroRuntime) instantiateModule(ctx context.Context, moduleConfig *Mod
 
 	// TODO: Add more configurations
 	cfg := wazero.NewModuleConfig()
-
-	// FIXME: Remove below line later
-	cfg = cfg.WithStdin(os.Stdin).WithStderr(os.Stderr).WithStdout(os.Stdout)
 
 	if moduleConfig != nil && moduleConfig.FSConfig.Enabled {
 		cfg = cfg.WithFSConfig(

@@ -10,28 +10,6 @@ import (
 	"github.com/wasify-io/wasify-go/internal/utils"
 )
 
-// The wazeroModule struct combines an instantiated wazero modul
-// with the generic module configuration.
-type wazeroModule struct {
-	mod api.Module
-	*ModuleConfig
-}
-
-// Close closes the resource.
-//
-// Note: The context parameter is used for value lookup, such as for
-// logging. A canceled or otherwise done context will not prevent Close
-// from succeeding.
-func (m *wazeroModule) Close(ctx context.Context) error {
-	err := m.mod.Close(ctx)
-	if err != nil {
-		err = errors.Join(errors.New("can't close module"), err)
-		m.log.Error(err.Error())
-		return err
-	}
-	return nil
-}
-
 // GuestFunction returns a GuestFunction instance associated with the wazeroModule.
 // GuestFunction is used to work with exported function from this module.
 //
@@ -57,6 +35,21 @@ func (m *wazeroModule) GuestFunction(ctx context.Context, name string) GuestFunc
 	}
 }
 
+// Close closes the resource.
+//
+// Note: The context parameter is used for value lookup, such as for
+// logging. A canceled or otherwise done context will not prevent Close
+// from succeeding.
+func (m *wazeroModule) Close(ctx context.Context) error {
+	err := m.mod.Close(ctx)
+	if err != nil {
+		err = errors.Join(errors.New("can't close module"), err)
+		m.log.Error(err.Error())
+		return err
+	}
+	return nil
+}
+
 // Memory retrieves a Memory instance associated with the wazeroModule.
 func (r *wazeroModule) Memory() Memory {
 	return &wazeroMemory{r}
@@ -64,6 +57,13 @@ func (r *wazeroModule) Memory() Memory {
 
 type wazeroMemory struct {
 	*wazeroModule
+}
+
+// The wazeroModule struct combines an instantiated wazero modul
+// with the generic module configuration.
+type wazeroModule struct {
+	mod api.Module
+	*ModuleConfig
 }
 
 // Read extracts and reads data from a packed memory location.
@@ -100,7 +100,7 @@ func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, any, error) {
 	case ValueTypeString:
 		data, err = m.ReadString(offset, size)
 	default:
-		err = fmt.Errorf("Unsupported read data type %d", valueType)
+		err = fmt.Errorf("Unsupported read data type %s", valueType)
 	}
 
 	if err != nil {
@@ -379,7 +379,8 @@ func (mp *wazeroModuleProxy) Free(offset uint32) error {
 //			// ...
 //			return m.Return(
 //				[]byte("Hello"),
-//				590110011,
+//				uint32(1234),
+//				float64(11.11111),
 //				"Hello string",
 //			)
 //		},

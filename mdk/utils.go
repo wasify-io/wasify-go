@@ -5,6 +5,9 @@ package mdk
 import "C"
 import (
 	"unsafe"
+
+	"github.com/wasify-io/wasify-go/internal/types"
+	"github.com/wasify-io/wasify-go/internal/utils"
 )
 
 // free deallocates the memory previously allocated by a call to malloc (C.malloc).
@@ -75,6 +78,21 @@ func stringToLeakedPtr(data string, offsetSize uint32) (offset uint64) {
 	return bytesToLeakedPtr(byteSlice, offsetSize)
 }
 
+// ptrToData converts a given memory address (ptr) into a pointer of type T.
+// This function uses unsafe operations to cast the provided uint64 pointer
+// to a pointer of the desired type, allowing for direct memory access to the
+// underlying data.
+//
+// return a pointer of type T pointing to the data at the specified memory address.
 func ptrToData[T any](ptr uint64) *T {
 	return (*T)(unsafe.Pointer(uintptr(ptr)))
+}
+
+func unpackDataAndCheckType(packedData ArgData, expectedType types.ValueType) (types.ValueType, uint32, uint32) {
+	valueType, offsetU32, size := utils.UnpackUI64(uint64(packedData))
+	if valueType != expectedType {
+		LogError("Unexpected data type. Expected %s, but got %s", expectedType, valueType)
+		return 0, 0, 0
+	}
+	return valueType, offsetU32, size
 }
