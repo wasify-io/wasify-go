@@ -47,7 +47,7 @@ func (m *wazeroModule) GuestFunction(ctx context.Context, name string) GuestFunc
 
 	fn := m.mod.ExportedFunction(name)
 	if fn == nil {
-		m.log.Warn("exported function does not exist", "function", name, "module", m.Namespace)
+		m.log.Warn("exported function does not exist", "function", name, "namespace", m.Namespace)
 	}
 
 	return &wazeroGuestFunction{
@@ -94,7 +94,7 @@ func (gf *wazeroGuestFunction) Invoke(params ...any) (uint64, error) {
 		log = gf.log.Debug
 	}
 
-	log("Calling function", "name", gf.Namespace, "module", gf.Namespace, "params", params)
+	log("calling guest function", "namespace", gf.Namespace, "function", gf.name, "params", params)
 
 	stack := make([]uint64, len(params))
 

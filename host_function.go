@@ -289,8 +289,9 @@ func (hf *HostFunction) cleanup(m ModuleProxy, params Params, returnOffsets map[
 		"cleanup: host func params and returns",
 		"total_bytes", totalSize,
 		"available_bytes", hf.allocationMap.TotalSize(),
+		"namespace", hf.moduleConfig.Namespace,
 		"func", hf.Name,
-		"module", hf.moduleConfig.Namespace)
+	)
 
 	return nil
 }

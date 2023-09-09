@@ -22,8 +22,8 @@ type ModuleProxy interface {
 }
 
 type GuestFunction interface {
-	call(args ...uint64) (uint64, error)
 	Invoke(args ...any) (uint64, error)
+	call(args ...uint64) (uint64, error)
 }
 
 type Memory interface {
