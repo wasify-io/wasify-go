@@ -89,10 +89,7 @@ func (gf *wazeroGuestFunction) call(params ...uint64) (uint64, error) {
 	return stack[0], nil
 }
 
-// Invoke calls the guest function with the provided parameters. It manages the memory allocations needed
-// for parameter passing and the extraction of results. Memory reserved during this operation is handled
-// to ensure no leaks occur. Any errors encountered during the execution are enhanced with context
-// about the stage at which they happened.
+// Invoke calls the guest function with the provided parameters.
 func (gf *wazeroGuestFunction) Invoke(params ...any) (uint64, error) {
 
 	var err error
@@ -103,10 +100,6 @@ func (gf *wazeroGuestFunction) Invoke(params ...any) (uint64, error) {
 	}
 
 	log("calling guest function", "namespace", gf.moduleConfig.Namespace, "function", gf.name, "params", params)
-
-	defer func() {
-		err = gf.cleanup()
-	}()
 
 	stack := make([]uint64, len(params))
 

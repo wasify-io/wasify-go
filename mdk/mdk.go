@@ -221,10 +221,12 @@ func AllocString(data string, offsetSize uint32) uint64 {
 	return stringToLeakedPtr(data, offsetSize)
 }
 
-// FreeMemory frees the memory allocated by the AllocateString or AllocateBytes functions.
-// It takes a uint64 that packs a pointer to the allocated memory and its size,
-// then sets the memory to zeros and frees it.
-func Free(packedData uint64) {
-	_, offset, _ := utils.UnpackUI64(packedData)
-	free(uint64(offset))
+// Free frees the memory.
+func Free(packedDatas ...ArgData) {
+
+	for _, p := range packedDatas {
+		_, offset, _ := utils.UnpackUI64(uint64(p))
+		free(uint64(offset))
+	}
+
 }
