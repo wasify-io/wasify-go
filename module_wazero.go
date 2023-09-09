@@ -70,9 +70,12 @@ type wazeroGuestFunction struct {
 	*ModuleConfig
 }
 
-// TODO: update comment
+// call invokes wazero's CallWithStack method, which returns ome uint64 message,
+// in most cases it is used to call built in methods such as "malloc", "free"
+// See wazero's CallWithStack for more details.
 func (gf *wazeroGuestFunction) call(params ...uint64) (uint64, error) {
 
+	// size of params len(params) + one size for return uint64 value
 	stack := make([]uint64, len(params)+1)
 	copy(stack, params)
 
@@ -139,6 +142,25 @@ func (gf *wazeroGuestFunction) Invoke(params ...any) (uint64, error) {
 	}
 
 	return res, nil
+}
+
+// Free releases the memory segments that were reserved by the
+// guest function for parameter passing and result retrieval.
+// finishes freeing memory and returns first error (if it exists).
+func (gf *wazeroGuestFunction) Free() error {
+
+	var firstErr error
+
+	gf.allocationMap.Range(func(key, value uint32) bool {
+		err := gf.memory.Free(key)
+		if firstErr == nil {
+			firstErr = err
+		}
+		return true
+	})
+
+	return firstErr
+
 }
 
 // Memory retrieves a Memory instance associated with the wazeroModule.
@@ -220,7 +242,7 @@ func (m *wazeroMemory) ReadByte(offset uint32) (byte, error) {
 func (m *wazeroMemory) ReadUint32(offset uint32) (uint32, error) {
 	data, ok := m.mod.Memory().ReadUint32Le(offset)
 	if !ok {
-		err := fmt.Errorf("Memory.ReadUint32Le(%d, %d) out of range of memory size %d", offset, 4, m.Size())
+		err := fmt.Errorf("Memory.ReadUint32(%d, %d) out of range of memory size %d", offset, 4, m.Size())
 		m.log.Error(err.Error())
 		return 0, err
 	}
@@ -231,7 +253,7 @@ func (m *wazeroMemory) ReadUint32(offset uint32) (uint32, error) {
 func (m *wazeroMemory) ReadUint64(offset uint32) (uint64, error) {
 	data, ok := m.mod.Memory().ReadUint64Le(offset)
 	if !ok {
-		err := fmt.Errorf("Memory.ReadUint64Le(%d, %d) out of range of memory size %d", offset, 8, m.Size())
+		err := fmt.Errorf("Memory.ReadUint64(%d, %d) out of range of memory size %d", offset, 8, m.Size())
 		m.log.Error(err.Error())
 		return 0, err
 	}
@@ -242,7 +264,7 @@ func (m *wazeroMemory) ReadUint64(offset uint32) (uint64, error) {
 func (m *wazeroMemory) ReadFloat32(offset uint32) (float32, error) {
 	data, ok := m.mod.Memory().ReadFloat32Le(offset)
 	if !ok {
-		err := fmt.Errorf("Memory.ReadFloat32Le(%d, %d) out of range of memory size %d", offset, 4, m.Size())
+		err := fmt.Errorf("Memory.ReadFloat32(%d, %d) out of range of memory size %d", offset, 4, m.Size())
 		m.log.Error(err.Error())
 		return 0, err
 	}
@@ -253,7 +275,7 @@ func (m *wazeroMemory) ReadFloat32(offset uint32) (float32, error) {
 func (m *wazeroMemory) ReadFloat64(offset uint32) (float64, error) {
 	data, ok := m.mod.Memory().ReadFloat64Le(offset)
 	if !ok {
-		err := fmt.Errorf("Memory.ReadFloat64Le(%d, %d) out of range of memory size %d", offset, 8, m.Size())
+		err := fmt.Errorf("Memory.ReadFloat64(%d, %d) out of range of memory size %d", offset, 8, m.Size())
 		m.log.Error(err.Error())
 		return 0, err
 	}
@@ -283,13 +305,13 @@ func (m *wazeroMemory) Write(offset uint32, v any) error {
 	case byte:
 		err = m.WriteByte(offset, vTyped)
 	case uint32:
-		err = m.WriteUint32Le(offset, vTyped)
+		err = m.WriteUint32(offset, vTyped)
 	case uint64:
-		err = m.WriteUint64Le(offset, vTyped)
+		err = m.WriteUint64(offset, vTyped)
 	case float32:
-		err = m.WriteFloat32Le(offset, vTyped)
+		err = m.WriteFloat32(offset, vTyped)
 	case float64:
-		err = m.WriteFloat64Le(offset, vTyped)
+		err = m.WriteFloat64(offset, vTyped)
 	case string:
 		err = m.WriteString(offset, vTyped)
 	default:
@@ -323,10 +345,10 @@ func (m *wazeroMemory) WriteByte(offset uint32, v byte) error {
 	return nil
 }
 
-func (m *wazeroMemory) WriteUint32Le(offset uint32, v uint32) error {
+func (m *wazeroMemory) WriteUint32(offset uint32, v uint32) error {
 	ok := m.mod.Memory().WriteUint32Le(offset, v)
 	if !ok {
-		err := fmt.Errorf(" Memory.WriteUint32Le(%d, %d) out of range of memory size %d", offset, 4, m.Size())
+		err := fmt.Errorf(" Memory.WriteUint32(%d, %d) out of range of memory size %d", offset, 4, m.Size())
 		m.log.Error(err.Error())
 		return err
 	}
@@ -334,10 +356,10 @@ func (m *wazeroMemory) WriteUint32Le(offset uint32, v uint32) error {
 	return nil
 }
 
-func (m *wazeroMemory) WriteUint64Le(offset uint32, v uint64) error {
+func (m *wazeroMemory) WriteUint64(offset uint32, v uint64) error {
 	ok := m.mod.Memory().WriteUint64Le(offset, v)
 	if !ok {
-		err := fmt.Errorf(" Memory.WriteUint64Le(%d, %d) out of range of memory size %d", offset, 8, m.Size())
+		err := fmt.Errorf(" Memory.WriteUint64(%d, %d) out of range of memory size %d", offset, 8, m.Size())
 		m.log.Error(err.Error())
 		return err
 	}
@@ -345,10 +367,10 @@ func (m *wazeroMemory) WriteUint64Le(offset uint32, v uint64) error {
 	return nil
 }
 
-func (m *wazeroMemory) WriteFloat32Le(offset uint32, v float32) error {
+func (m *wazeroMemory) WriteFloat32(offset uint32, v float32) error {
 	ok := m.mod.Memory().WriteFloat32Le(offset, v)
 	if !ok {
-		err := fmt.Errorf(" Memory.WriteFloat32Le(%d, %d) out of range of memory size %d", offset, 8, m.Size())
+		err := fmt.Errorf(" Memory.WriteFloat32(%d, %d) out of range of memory size %d", offset, 8, m.Size())
 		m.log.Error(err.Error())
 		return err
 	}
@@ -356,10 +378,10 @@ func (m *wazeroMemory) WriteFloat32Le(offset uint32, v float32) error {
 	return nil
 }
 
-func (m *wazeroMemory) WriteFloat64Le(offset uint32, v float64) error {
+func (m *wazeroMemory) WriteFloat64(offset uint32, v float64) error {
 	ok := m.mod.Memory().WriteFloat64Le(offset, v)
 	if !ok {
-		err := fmt.Errorf(" Memory.WriteFloat64Le(%d, %d) out of range of memory size %d", offset, 8, m.Size())
+		err := fmt.Errorf(" Memory.WriteFloat64(%d, %d) out of range of memory size %d", offset, 8, m.Size())
 		m.log.Error(err.Error())
 		return err
 	}

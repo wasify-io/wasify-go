@@ -46,3 +46,9 @@ func (am *AllocationMap[K, V]) Delete(offset K) {
 func (am *AllocationMap[K, V]) TotalSize() V {
 	return am.Size
 }
+
+func (am *AllocationMap[K, V]) Range(callback func(key K, value V) bool) {
+	am.Map.Range(func(k, v interface{}) bool {
+		return callback(k.(K), v.(V))
+	})
+}
