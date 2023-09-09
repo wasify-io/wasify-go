@@ -45,13 +45,13 @@ func Arg(value any) ArgData {
 }
 
 // TODO: Update comment
-func ReadResults(resultsOffset ArgData) []*Result {
+func ReadResults(packedDatas ArgData) []*Result {
 
-	if resultsOffset == 0 {
+	if packedDatas == 0 {
 		return nil
 	}
 
-	t, offsetU32, size := utils.UnpackUI64(uint64(resultsOffset))
+	t, offsetU32, size := utils.UnpackUI64(uint64(packedDatas))
 
 	if t != types.ValueTypePack {
 		panic(fmt.Sprintf("can't unpack data, value type is not a type of valueTypePack. expected %d, got %d", types.ValueTypePack, t))
