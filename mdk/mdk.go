@@ -186,7 +186,9 @@ func AllocPack(data any) (uint64, error) {
 	case types.ValueTypeString:
 		offset = AllocString(data.(string), offsetSize)
 	default:
-		return 0, fmt.Errorf("unsupported data type %d for allocation", dataType)
+		err = fmt.Errorf("unsupported data type %s for allocation", dataType)
+		LogError(err.Error())
+		return 0, err
 	}
 
 	return utils.PackUI64(dataType, uint32(offset), offsetSize)
