@@ -99,7 +99,7 @@ func hostLog(mdk.ArgData, mdk.ArgData) mdk.ResultOffset
 func _greet() {
     resultOffset := hostLog(mdk.Arg("Hello"), mdk.Arg(uint32(2023)))
 
-    results := mdk.Results(resultOffset)
+    results := mdk.ReadResults(resultOffset)
 
     for i, result := range results {
         mdk.Log("Guest func result %d: %s\r\n", i, string(result.Data))
