@@ -29,7 +29,7 @@ func (gf *wazeroGuestFunction) call(params ...uint64) (uint64, error) {
 
 	err := gf.fn.CallWithStack(gf.ctx, stack[:])
 	if err != nil {
-		err = errors.Join(fmt.Errorf("An error occurred while attempting to invoke the guest function %s", gf.name), err)
+		err = errors.Join(errors.New("error invoking internal call func"), err)
 		gf.moduleConfig.log.Error(err.Error())
 		return 0, err
 	}

@@ -111,7 +111,7 @@ func ReadBytes(packedData ArgData) ([]byte, uint32) {
 	valueType, offsetU32, size := utils.UnpackUI64(uint64(packedData))
 	data := unsafe.Slice(ptrToData[byte](uint64(offsetU32)), size)
 	if valueType != types.ValueTypeBytes {
-		panic(fmt.Sprintf("data is not bytes: %s", reflect.ValueOf(data)))
+		LogError(fmt.Sprintf("data is not bytes: %s", reflect.ValueOf(data)))
 	}
 	return data, size
 }
@@ -119,8 +119,8 @@ func ReadBytes(packedData ArgData) ([]byte, uint32) {
 func ReadByte(packedData ArgData) byte {
 	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
 	data := *ptrToData[byte](uint64(offsetU32))
-	if valueType != types.ValueTypeBytes {
-		panic(fmt.Sprintf("data is not byte: %s", reflect.ValueOf(data)))
+	if valueType != types.ValueTypeByte {
+		LogError(fmt.Sprintf("data is not byte: %s", reflect.ValueOf(data)))
 	}
 	return data
 }
@@ -128,32 +128,32 @@ func ReadByte(packedData ArgData) byte {
 func ReadI32(packedData ArgData) uint32 {
 	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
 	data := *ptrToData[uint32](uint64(offsetU32))
-	if valueType != types.ValueTypeString {
-		panic(fmt.Sprintf("data is not uint32: %s", reflect.ValueOf(data)))
+	if valueType != types.ValueTypeI32 {
+		LogError(fmt.Sprintf("data is not uint32: %s", reflect.ValueOf(data)))
 	}
 	return data
 }
 func ReadI64(packedData ArgData) uint64 {
 	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
 	data := *ptrToData[uint64](uint64(offsetU32))
-	if valueType != types.ValueTypeString {
-		panic(fmt.Sprintf("data is not uint32: %s", reflect.ValueOf(data)))
+	if valueType != types.ValueTypeI64 {
+		LogError(fmt.Sprintf("data is not uint32: %s", reflect.ValueOf(data)))
 	}
 	return data
 }
 func ReadF32(packedData ArgData) float32 {
 	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
 	data := *ptrToData[float32](uint64(offsetU32))
-	if valueType != types.ValueTypeString {
-		panic(fmt.Sprintf("data is not float32: %s", reflect.ValueOf(data)))
+	if valueType != types.ValueTypeI32 {
+		LogError(fmt.Sprintf("data is not float32: %s", reflect.ValueOf(data)))
 	}
 	return data
 }
 func ReadF64(packedData ArgData) float64 {
 	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
 	data := *ptrToData[float64](uint64(offsetU32))
-	if valueType != types.ValueTypeString {
-		panic(fmt.Sprintf("data is not float64: %s", reflect.ValueOf(data)))
+	if valueType != types.ValueTypeI64 {
+		LogError(fmt.Sprintf("data is not float64: %s", reflect.ValueOf(data)))
 	}
 	return data
 }
@@ -161,7 +161,7 @@ func ReadString(packedData ArgData) (string, uint32) {
 	valueType, offsetU32, size := utils.UnpackUI64(uint64(packedData))
 	data := unsafe.String(ptrToData[byte](uint64(offsetU32)), size)
 	if valueType != types.ValueTypeString {
-		panic(fmt.Sprintf("data is not a string: %s", reflect.ValueOf(data)))
+		LogError(fmt.Sprintf("data is not a string: %s", reflect.ValueOf(data)))
 	}
 	return data, size
 }
