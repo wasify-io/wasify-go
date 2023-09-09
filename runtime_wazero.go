@@ -68,14 +68,14 @@ func (r *wazeroRuntime) NewModule(ctx context.Context, moduleConfig *ModuleConfi
 		actualHash, err := utils.CalculateHash(moduleConfig.Wasm.Binary)
 		if err != nil {
 			err = errors.Join(errors.New("can't calculate the hash"), err)
-			moduleConfig.log.Warn(err.Error(), "module", moduleConfig.Namespace, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
+			moduleConfig.log.Warn(err.Error(), "namespace", moduleConfig.Namespace, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
 			return nil, err
 		}
-		moduleConfig.log.Info("hash calculation", "module", moduleConfig.Namespace, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
+		moduleConfig.log.Info("hash calculation", "namespace", moduleConfig.Namespace, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
 
 		err = utils.CompareHashes(actualHash, moduleConfig.Wasm.Hash)
 		if err != nil {
-			moduleConfig.log.Warn(err.Error(), "module", moduleConfig.Namespace, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
+			moduleConfig.log.Warn(err.Error(), "namespace", moduleConfig.Namespace, "needed hash", moduleConfig.Wasm.Hash, "actual wasm hash", actualHash)
 			return nil, err
 		}
 	}
@@ -83,22 +83,22 @@ func (r *wazeroRuntime) NewModule(ctx context.Context, moduleConfig *ModuleConfi
 	// Instantiate host functions and configure wazeroModule accordingly.
 	err := r.instantiateHostFunctions(ctx, wazeroModule, moduleConfig)
 	if err != nil {
-		moduleConfig.log.Error(err.Error(), "module", moduleConfig.Namespace)
-		r.log.Error(err.Error(), "runtime", r.Runtime, "module", moduleConfig.Namespace)
+		moduleConfig.log.Error(err.Error(), "namespace", moduleConfig.Namespace)
+		r.log.Error(err.Error(), "runtime", r.Runtime, "namespace", moduleConfig.Namespace)
 		return nil, err
 	}
 
-	moduleConfig.log.Info("host functions has been instantiated successfully", "module", moduleConfig.Namespace)
+	moduleConfig.log.Info("host functions has been instantiated successfully", "namespace", moduleConfig.Namespace)
 
 	// Instantiate the module and set it in wazeroModule.
 	mod, err := r.instantiateModule(ctx, moduleConfig)
 	if err != nil {
-		moduleConfig.log.Error(err.Error(), "module", moduleConfig.Namespace)
-		r.log.Error(err.Error(), "runtime", r.Runtime, "module", moduleConfig.Namespace)
+		moduleConfig.log.Error(err.Error(), "namespace", moduleConfig.Namespace)
+		r.log.Error(err.Error(), "runtime", r.Runtime, "namespace", moduleConfig.Namespace)
 		return nil, err
 	}
 
-	moduleConfig.log.Info("module has been instantiated successfully", "module", moduleConfig.Namespace)
+	moduleConfig.log.Info("module has been instantiated successfully", "namespace", moduleConfig.Namespace)
 
 	wazeroModule.mod = mod
 
@@ -146,30 +146,30 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 		// in the moduleConfig.HostFunctions slice.
 		hf := hostFunc
 
-		moduleConfig.log.Debug("build host function", "function", hf.Name, "module", moduleConfig.Namespace)
+		moduleConfig.log.Debug("build host function", "namespace", moduleConfig.Namespace, "function", hf.Name)
 
 		// Associate the host function with module-related information.
 		// This configuration ensures that the host function can access ModuleConfig data from various contexts.
 		// Additionally, we set up an allocationMap specific to the host function, creating a map that stores
 		// offsets and sizes relevant to the host function's operations. This allows us to manage and clean up
 		// user resources effectively.
-		// We use allocationMap operations for Params provided in host function and Returns, which originally
+		// We use allocationMap operations for Params provided in host function and Results, which originally
 		// should be freed up.
 		// See host_function.go for more details.
 		hf.moduleConfig = moduleConfig
 		hf.allocationMap = memory.NewAllocationMap[uint32, uint32]()
 
 		// If hsot function has any return values, we pack it as a single uint64
-		var returnValuesPackedData = []ValueType{}
-		if len(hf.Returns) > 0 {
-			returnValuesPackedData = []ValueType{ValueTypeI64}
+		var resultValuesPackedData = []ValueType{}
+		if len(hf.Results) > 0 {
+			resultValuesPackedData = []ValueType{ValueTypeI64}
 		}
 
 		modBuilder = modBuilder.
 			NewFunctionBuilder().
 			WithGoModuleFunction(api.GoModuleFunc(wazeroHostFunctionCallback(wazeroModule, moduleConfig, &hf)),
 				r.convertToAPIValueTypes(hf.Params),
-				r.convertToAPIValueTypes(returnValuesPackedData),
+				r.convertToAPIValueTypes(resultValuesPackedData),
 			).
 			Export(hf.Name)
 
@@ -196,7 +196,7 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 		NewFunctionBuilder().
 		WithGoModuleFunction(api.GoModuleFunc(wazeroHostFunctionCallback(wazeroModule, moduleConfig, log)),
 			r.convertToAPIValueTypes(log.Params),
-			r.convertToAPIValueTypes(log.Returns),
+			r.convertToAPIValueTypes(log.Results),
 		).
 		Export(log.Name)
 

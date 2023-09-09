@@ -43,7 +43,7 @@ func (hf *hostFunctions) newLog() *HostFunction {
 
 		},
 		Params:  []ValueType{ValueTypeBytes, ValueTypeBytes},
-		Returns: nil,
+		Results: nil,
 
 		// required fields
 		moduleConfig:  hf.moduleConfig,

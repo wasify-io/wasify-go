@@ -6,7 +6,7 @@ import (
 
 func main() {}
 
-//go:wasmimport all_available_types hostTest
+//go:wasmimport host_all_available_types hostTest
 func hostTest(
 	mdk.ArgData,
 	mdk.ArgData,

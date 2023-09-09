@@ -3,27 +3,25 @@ package wasify_test
 import (
 	"context"
 	_ "embed"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/wasify-io/wasify-go"
 )
 
-//go:embed testdata/wasm/all_available_types/main.wasm
-var wasm_allAvailableTypes []byte
+//go:embed testdata/wasm/host_all_available_types/main.wasm
+var wasm_hostAllAvailableTypes []byte
 
 func TestHostFunctions(t *testing.T) {
 
 	testRuntimeConfig := wasify.RuntimeConfig{
-		Runtime:     wasify.RuntimeWazero,
-		LogSeverity: wasify.LogError,
+		Runtime: wasify.RuntimeWazero,
 	}
 
 	testModuleConfig := wasify.ModuleConfig{
-		Namespace: "all_available_types",
+		Namespace: "host_all_available_types",
 		Wasm: wasify.Wasm{
-			Binary: wasm_allAvailableTypes,
+			Binary: wasm_hostAllAvailableTypes,
 		},
 		HostFunctions: []wasify.HostFunction{
 			{
@@ -71,7 +69,7 @@ func TestHostFunctions(t *testing.T) {
 					wasify.ValueTypeF64,
 					wasify.ValueTypeString,
 				},
-				Returns: []wasify.ValueType{
+				Results: []wasify.ValueType{
 					wasify.ValueTypeBytes,
 					wasify.ValueTypeByte,
 					wasify.ValueTypeI32,
@@ -105,6 +103,6 @@ func TestHostFunctions(t *testing.T) {
 		res, err := module.GuestFunction(ctx, "guestTest").Invoke()
 		assert.NoError(t, err)
 
-		fmt.Println("res", res)
+		t.Log("TestHostFunctions RES:", res)
 	})
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/wasify-io/wasify-go/internal/memory"
 	"github.com/wasify-io/wasify-go/internal/types"
 	"github.com/wasify-io/wasify-go/internal/utils"
-	"github.com/wasify-io/wasify-go/mdk"
 )
 
 // ValueType represents the type of value used in function parameters and returns.
@@ -38,7 +37,7 @@ type Param struct {
 }
 type Params []Param
 
-// ReturnValue represents the value returned from a function.
+// Result represents the value returned from a function.
 type Result any
 type Results []Result
 
@@ -56,11 +55,11 @@ type HostFunction struct {
 	// from the host function when called from the guest.
 	Params []ValueType
 
-	// Returns specifies the types of values that the host function returns.
+	// Results specifies the types of values that the host function Results.
 	//
-	// The length of 'Returns' should match the expected number of returns
+	// The length of 'Results' should match the expected number of Results
 	// from the host function as used in the guest.
-	Returns []ValueType
+	Results []ValueType
 
 	// Allocation map to track parameter and return value allocations for host func.
 	allocationMap *memory.AllocationMap[uint32, uint32]
@@ -169,8 +168,8 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	}
 
 	// Return runtime error if return values does not match
-	if len(*results) != len(hf.Returns) {
-		return nil, nil, fmt.Errorf("return value missmatch %d != %d", len(*results), len(hf.Returns))
+	if len(*results) != len(hf.Results) {
+		return nil, nil, fmt.Errorf("return value missmatch %d != %d", len(*results), len(hf.Results))
 	}
 
 	// First, allocate memory for each byte slice and store the offsets in a slice
@@ -179,17 +178,17 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	// +1 len because for the offset which holds all offsets
 	returnOffsets := make(map[uint32]uint32, len(*results)+1)
 
-	for i, returnValue := range *results {
+	for i, resultValue := range *results {
 
-		// get offset size and result value type (ValueType) by result's returnValue
-		valueType, offsetSize, err := types.GetOffsetSizeAndDataTypeByConversion(returnValue)
+		// get offset size and result value type (ValueType) by result's resultValue
+		valueType, offsetSize, err := types.GetOffsetSizeAndDataTypeByConversion(resultValue)
 		if err != nil {
 			err = errors.Join(errors.New("can't convert result"), err)
 			return nil, nil, err
 		}
 
-		if ValueType(valueType) != hf.Returns[i] {
-			return nil, nil, fmt.Errorf("return value does not match actual value %d != %d", valueType, hf.Returns[i])
+		if ValueType(valueType) != hf.Results[i] {
+			return nil, nil, fmt.Errorf("return value does not match actual value %d != %d", valueType, hf.Results[i])
 		}
 
 		// allocate memory for each value
@@ -205,14 +204,15 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 		// for later cleanup.
 		hf.allocationMap.Store(offset, offsetSize)
 
-		err = m.Write(offset, returnValue)
+		err = m.Write(offset, resultValue)
 		if err != nil {
+			// FIXME: Cleanup alloc memory
 			err = errors.Join(errors.New("can't write return value"), err)
 			return nil, nil, err
 		}
 
 		// Pack the offset and size into a single uint64
-		packedDatas[i], err = mdk.PackUI64(valueType, offset, offsetSize)
+		packedDatas[i], err = utils.PackUI64(valueType, offset, offsetSize)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -238,7 +238,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	}
 
 	// Final packed data, which contains offset and size of packedDatas slice
-	packedData, err := mdk.PackUI64(types.ValueTypePack, offset, offsetSize)
+	packedData, err := utils.PackUI64(types.ValueTypePack, offset, offsetSize)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -286,11 +286,12 @@ func (hf *HostFunction) cleanup(m ModuleProxy, params Params, returnOffsets map[
 	}
 
 	hf.moduleConfig.log.Debug(
-		"cleanup: host func params and returns",
-		"total_bytes", totalSize,
-		"available_bytes", hf.allocationMap.TotalSize(),
+		"cleanup: host func params and results",
+		"allocated_bytes", totalSize,
+		"after_deallocate_bytes", hf.allocationMap.TotalSize(),
+		"namespace", hf.moduleConfig.Namespace,
 		"func", hf.Name,
-		"module", hf.moduleConfig.Namespace)
+	)
 
 	return nil
 }

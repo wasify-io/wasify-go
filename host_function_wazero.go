@@ -38,7 +38,7 @@ import (
 // |  +-----------------------------+     |
 // |  | Convert Return Values to    |     |
 // |  | Packed Data using           |     |
-// |  | writeReturnValues           |     |
+// |  | writeResultsToMemory           |     |
 // |  | and write final packedData  |     |
 // |  | into linear memory          |     |
 // |  +-----------------------------+     |
@@ -63,24 +63,22 @@ func wazeroHostFunctionCallback(wazeroModule *wazeroModule, moduleConfig *Module
 
 		params, err := hf.convertParamsToStruct(ctx, moduleProxy, stack)
 		if err != nil {
-			moduleConfig.log.Error(err.Error(), "func", hf.Name, "module", wazeroModule.Namespace)
-			panic(err)
+			moduleConfig.log.Error(err.Error(), "namespace", wazeroModule.Namespace, "func", hf.Name)
 		}
 
 		// user defined host function callback
-		returnValues := hf.Callback(ctx, moduleProxy, params)
+		results := hf.Callback(ctx, moduleProxy, params)
 
 		// convert Go types to uint64 values and write them to the stack
-		_, returnOffsets, err := hf.writeResultsToMemory(ctx, moduleProxy, returnValues, stack)
+		_, returnOffsets, err := hf.writeResultsToMemory(ctx, moduleProxy, results, stack)
 		if err != nil {
 			err = errors.Join(errors.New("function executed, but can't write to the memory"), err)
-			moduleConfig.log.Error(err.Error(), "func", hf.Name, "module", wazeroModule.Namespace)
-			panic(err)
+			moduleConfig.log.Error(err.Error(), "namespace", wazeroModule.Namespace, "func", hf.Name)
 		}
 
 		err = hf.cleanup(moduleProxy, params, returnOffsets)
 		if err != nil {
-			moduleConfig.log.Error(err.Error(), "func", hf.Name, "module", wazeroModule.Namespace)
+			moduleConfig.log.Error(err.Error(), "namespace", wazeroModule.Namespace, "func", hf.Name)
 			panic(err)
 		}
 	}

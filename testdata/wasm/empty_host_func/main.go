@@ -7,5 +7,5 @@ func hostFunc()
 
 //export greet
 func _greet() {
-
+	hostFunc()
 }

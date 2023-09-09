@@ -2,10 +2,12 @@ package mdk
 
 import (
 	"fmt"
+	"reflect"
 	"runtime"
 	"unsafe"
 
 	"github.com/wasify-io/wasify-go/internal/types"
+	"github.com/wasify-io/wasify-go/internal/utils"
 )
 
 // ArgData represents an offset into WebAssembly memory that refers to an argument's location.
@@ -32,7 +34,7 @@ type Result struct {
 // The memory management is handled on the host side, where the allocated memory is automatically deallocated.
 func Arg(value any) ArgData {
 
-	packedData, err := Alloc(value)
+	packedData, err := AllocPack(value)
 	if err != nil {
 		panic(err)
 	}
@@ -42,16 +44,14 @@ func Arg(value any) ArgData {
 	return ArgData(packedData)
 }
 
-// Results unpacks and returns the results of a host function in WebAssembly.
-// It takes a ResultOffset, which contains packed memory offsets, and returns a slice of Result structs.
-// This utility helps in reading the data returned by WebAssembly functions without dealing with the intricacies of memory offsets.
-func Results(resultsOffset ResultOffset) []Result {
+// TODO: Update comment
+func ReadResults(packedDatas ArgData) []*Result {
 
-	if resultsOffset == 0 {
+	if packedDatas == 0 {
 		return nil
 	}
 
-	t, offsetU32, size := UnpackUI64(uint64(resultsOffset))
+	t, offsetU32, size := utils.UnpackUI64(uint64(packedDatas))
 
 	if t != types.ValueTypePack {
 		panic(fmt.Sprintf("can't unpack data, value type is not a type of valueTypePack. expected %d, got %d", types.ValueTypePack, t))
@@ -63,45 +63,112 @@ func Results(resultsOffset ResultOffset) []Result {
 	// read the packed pointers and sizes from the array
 	packedData := unsafe.Slice(ptrToData[uint64](uint64(offsetU32)), count)
 
-	data := make([]Result, count)
+	data := make([]*Result, count)
 
 	// Iterate over the packedData, unpack and read data of each element into a Result
 	for i, pd := range packedData {
-		valueType, offsetU32, size := UnpackUI64(pd)
-		offset := uint64(offsetU32)
 
-		var value any
+		v, s := ReadAny(ArgData(pd))
 
-		switch valueType {
-		case types.ValueTypeBytes:
-			value = unsafe.Slice(ptrToData[byte](offset), size)
-		case types.ValueTypeByte:
-			value = ptrToData[byte](offset)
-		case types.ValueTypeI32:
-			value = ptrToData[uint32](offset)
-		case types.ValueTypeI64:
-			value = ptrToData[uint64](offset)
-		case types.ValueTypeF32:
-			value = ptrToData[float32](offset)
-		case types.ValueTypeF64:
-			value = ptrToData[float64](offset)
-		case types.ValueTypeString:
-			value = string(unsafe.String(ptrToData[byte](offset), size))
+		data[i] = &Result{
+			Size: s,
+			Data: v,
 		}
-
-		data[i] = Result{
-			Size: size,
-			Data: value,
-		}
-
 	}
 
 	return data
 }
 
-// Alloc prepares data for interaction with WebAssembly by allocating the necessary memory.
-// It accepts a generic input and returns a uint64 value that combines the memory offset and size.
-func Alloc(data any) (uint64, error) {
+// TODO: Update comment
+func ReadAny(packedData ArgData) (any, uint32) {
+
+	valueType, _, size := utils.UnpackUI64(uint64(packedData))
+	var value any
+
+	switch valueType {
+	case types.ValueTypeBytes:
+		value, _ = ReadBytes(packedData)
+	case types.ValueTypeByte:
+		value, _ = ReadBytes(packedData)
+	case types.ValueTypeI32:
+		value, _ = ReadBytes(packedData)
+	case types.ValueTypeI64:
+		value, _ = ReadBytes(packedData)
+	case types.ValueTypeF32:
+		value, _ = ReadBytes(packedData)
+	case types.ValueTypeF64:
+		value, _ = ReadBytes(packedData)
+	case types.ValueTypeString:
+		value, _ = ReadBytes(packedData)
+	default:
+		return nil, 0
+	}
+
+	return value, size
+}
+
+func ReadBytes(packedData ArgData) ([]byte, uint32) {
+	valueType, offsetU32, size := utils.UnpackUI64(uint64(packedData))
+	data := unsafe.Slice(ptrToData[byte](uint64(offsetU32)), size)
+	if valueType != types.ValueTypeBytes {
+		LogError(fmt.Sprintf("data is not bytes: %s", reflect.ValueOf(data)))
+	}
+	return data, size
+}
+
+func ReadByte(packedData ArgData) byte {
+	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
+	data := *ptrToData[byte](uint64(offsetU32))
+	if valueType != types.ValueTypeByte {
+		LogError(fmt.Sprintf("data is not byte: %s", reflect.ValueOf(data)))
+	}
+	return data
+}
+
+func ReadI32(packedData ArgData) uint32 {
+	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
+	data := *ptrToData[uint32](uint64(offsetU32))
+	if valueType != types.ValueTypeI32 {
+		LogError(fmt.Sprintf("data is not uint32: %s", reflect.ValueOf(data)))
+	}
+	return data
+}
+func ReadI64(packedData ArgData) uint64 {
+	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
+	data := *ptrToData[uint64](uint64(offsetU32))
+	if valueType != types.ValueTypeI64 {
+		LogError(fmt.Sprintf("data is not uint32: %s", reflect.ValueOf(data)))
+	}
+	return data
+}
+func ReadF32(packedData ArgData) float32 {
+	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
+	data := *ptrToData[float32](uint64(offsetU32))
+	if valueType != types.ValueTypeI32 {
+		LogError(fmt.Sprintf("data is not float32: %s", reflect.ValueOf(data)))
+	}
+	return data
+}
+func ReadF64(packedData ArgData) float64 {
+	valueType, offsetU32, _ := utils.UnpackUI64(uint64(packedData))
+	data := *ptrToData[float64](uint64(offsetU32))
+	if valueType != types.ValueTypeI64 {
+		LogError(fmt.Sprintf("data is not float64: %s", reflect.ValueOf(data)))
+	}
+	return data
+}
+func ReadString(packedData ArgData) (string, uint32) {
+	valueType, offsetU32, size := utils.UnpackUI64(uint64(packedData))
+	data := unsafe.String(ptrToData[byte](uint64(offsetU32)), size)
+	if valueType != types.ValueTypeString {
+		LogError(fmt.Sprintf("data is not a string: %s", reflect.ValueOf(data)))
+	}
+	return data, size
+}
+
+// AllocPack prepares data for interaction with WebAssembly by allocating the necessary memory.
+// It accepts a generic input and returns a uint64 value that combines the value type, memory offset, size.
+func AllocPack(data any) (uint64, error) {
 
 	dataType, offsetSize, err := types.GetOffsetSizeAndDataTypeByConversion(data)
 	if err != nil {
@@ -116,20 +183,20 @@ func Alloc(data any) (uint64, error) {
 	case types.ValueTypeByte:
 		offset = AllocByte(data.(byte))
 	case types.ValueTypeI32:
-		offset = AllocUint32Le(data.(uint32))
+		offset = AllocUint32(data.(uint32))
 	case types.ValueTypeI64:
-		offset = AllocUint64Le(data.(uint64))
+		offset = AllocUint64(data.(uint64))
 	case types.ValueTypeF32:
-		offset = AllocFloat32Le(data.(float32))
+		offset = AllocFloat32(data.(float32))
 	case types.ValueTypeF64:
-		offset = AllocFloat64Le(data.(float64))
+		offset = AllocFloat64(data.(float64))
 	case types.ValueTypeString:
 		offset = AllocString(data.(string), offsetSize)
 	default:
 		return 0, fmt.Errorf("unsupported data type %d for allocation", dataType)
 	}
 
-	return PackUI64(dataType, uint32(offset), offsetSize)
+	return utils.PackUI64(dataType, uint32(offset), offsetSize)
 }
 
 func AllocBytes(data []byte, offsetSize uint32) uint64 {
@@ -138,63 +205,26 @@ func AllocBytes(data []byte, offsetSize uint32) uint64 {
 func AllocByte(data byte) uint64 {
 	return byteToLeakedPtr(data)
 }
-func AllocUint32Le(data uint32) uint64 {
+func AllocUint32(data uint32) uint64 {
 	return uint32ToLeakedPtr(data)
 }
-func AllocUint64Le(data uint64) uint64 {
+func AllocUint64(data uint64) uint64 {
 	return uint64ToLeakedPtr(data)
 }
-func AllocFloat32Le(data float32) uint64 {
+func AllocFloat32(data float32) uint64 {
 	return float32ToLeakedPtr(data)
 }
-func AllocFloat64Le(data float64) uint64 {
+func AllocFloat64(data float64) uint64 {
 	return float64ToLeakedPtr(data)
 }
 func AllocString(data string, offsetSize uint32) uint64 {
 	return stringToLeakedPtr(data, offsetSize)
 }
 
-// FreeMemory frees the memory allocated by the AllocateString or AllocateBytes functions.
-// It takes a uint64 that packs a pointer to the allocated memory and its size,
-// then sets the memory to zeros and frees it.
-func Free(packedData uint64) {
-	_, offset, _ := UnpackUI64(packedData)
-	free(uint64(offset))
-}
-
-// PackUI64 takes a data type (in the form of a byte), a pointer (offset in memory),
-// and a size (amount of memory/data to consider). It returns a packed uint64 representation.
-//
-// Structure of the packed uint64:
-// - Highest 8 bits: data type
-// - Next 32 bits: offset
-// - Lowest 24 bits: size
-//
-// This function will return error if the provided size is larger than what can be represented in 24 bits
-// (i.e., larger than 16,777,215).
-func PackUI64(dataType types.ValueType, offset uint32, size uint32) (uint64, error) {
-	// Check if the size can be represented in 24 bits
-	if size >= (1 << 24) {
-		return 0, fmt.Errorf("Size %d exceeds 24 bits precision %d", size, (1 << 24))
+// Free frees the memory.
+func Free(packedDatas ...ArgData) {
+	for _, p := range packedDatas {
+		_, offset, _ := utils.UnpackUI64(uint64(p))
+		free(uint64(offset))
 	}
-
-	// Shift the dataType into the highest 8 bits
-	// Shift the offset into the next 32 bits
-	// Use the size as is, but ensure only the lowest 24 bits are used (using bitwise AND)
-	return (uint64(dataType) << 56) | (uint64(offset) << 24) | uint64(size&0xFFFFFF), nil
-}
-
-// UnpackUI64 reverses the operation done by PackUI64.
-// Given a packed uint64, it will extract and return the original dataType, offset (ptr), and size.
-func UnpackUI64(packedData uint64) (dataType types.ValueType, offset uint32, size uint32) {
-	// Extract the dataType from the highest 8 bits
-	dataType = types.ValueType(packedData >> 56)
-
-	// Extract the offset (ptr) from the next 32 bits using bitwise AND to mask the other bits
-	offset = uint32((packedData >> 24) & 0xFFFFFFFF)
-
-	// Extract the size from the lowest 24 bits
-	size = uint32(packedData & 0xFFFFFF)
-
-	return
 }

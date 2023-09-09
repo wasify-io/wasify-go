@@ -4,6 +4,13 @@
 
 wasify simplifies communication with the WebAssembly System Interface (WASI), eliminating the need for developers to delve into intricate details or communicate using numbers, which is the standard method of interaction with modules. This library significantly eases the process of running and working with wasm modules, which has traditionally been a less straightforward task.
 
+
+---
+> [!WARNING]
+> - **The project is still being worked on, and there might be significant changes coming;**
+> - Requires Go v1.21
+
+---
 ## Installation
 
 ```bash
@@ -61,7 +68,7 @@ func main() {
 
                 },
                 Params:  []wasify.ValueType{wasify.ValueTypeString, wasify.ValueTypeI32},
-                Returns: []wasify.ValueType{wasify.ValueTypeByte, wasify.ValueTypeI32},
+                Results: []wasify.ValueType{wasify.ValueTypeByte, wasify.ValueTypeI32},
             },
         },
     })
@@ -92,7 +99,7 @@ func hostLog(mdk.ArgData, mdk.ArgData) mdk.ResultOffset
 func _greet() {
     resultOffset := hostLog(mdk.Arg("Hello"), mdk.Arg(uint32(2023)))
 
-    results := mdk.Results(resultOffset)
+    results := mdk.ReadResults(resultOffset)
 
     for i, result := range results {
         mdk.Log("Guest func result %d: %s\r\n", i, string(result.Data))
