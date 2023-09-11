@@ -49,7 +49,7 @@ func (gf *wazeroGuestFunction) call(params ...uint64) (uint64, error) {
 // Example:
 //
 // res, err := module.GuestFunction(ctx, "guestTest").Invoke([]byte("bytes!"), uint32(32), float32(32.0), "Wasify")
-func (gf *wazeroGuestFunction) Invoke(params ...any) (uint64, error) {
+func (gf *wazeroGuestFunction) Invoke(params ...any) (*GuestFunctionResult, error) {
 
 	var err error
 
@@ -66,7 +66,7 @@ func (gf *wazeroGuestFunction) Invoke(params ...any) (uint64, error) {
 		valueType, offsetSize, err := types.GetOffsetSizeAndDataTypeByConversion(p)
 		if err != nil {
 			err = errors.Join(fmt.Errorf("Can't convert guest func param %s", gf.name), err)
-			return 0, err
+			return nil, err
 		}
 
 		// allocate memory for each value
@@ -74,29 +74,33 @@ func (gf *wazeroGuestFunction) Invoke(params ...any) (uint64, error) {
 		if err != nil {
 			err = errors.Join(fmt.Errorf("An error occurred while attempting to alloc memory for guest func param in: %s", gf.name), err)
 			gf.moduleConfig.log.Error(err.Error())
-			return 0, err
+			return nil, err
 		}
 
 		err = gf.memory.Write(offsetI32, p)
 		if err != nil {
-			err = errors.Join(errors.New("can't write arg to"), err)
-			return 0, err
+			err = errors.Join(errors.New("Can't write arg to"), err)
+			return nil, err
 		}
 
 		stack[i], err = utils.PackUI64(valueType, offsetI32, offsetSize)
 		if err != nil {
 			err = errors.Join(fmt.Errorf("An error occurred while attempting to pack data for guest func param in:  %s", gf.name), err)
 			gf.moduleConfig.log.Error(err.Error())
-			return 0, err
+			return nil, err
 		}
-
 	}
 
-	res, err := gf.call(stack...)
+	packedDatas, err := gf.call(stack...)
 	if err != nil {
 		err = errors.Join(fmt.Errorf("An error occurred while attempting to invoke the guest function: %s", gf.name), err)
 		gf.moduleConfig.log.Error(err.Error())
-		return 0, err
+		return nil, err
+	}
+
+	res := &GuestFunctionResult{
+		packedData: packedDatas,
+		memory:     gf.memory,
 	}
 
 	return res, err

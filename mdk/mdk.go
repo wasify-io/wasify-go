@@ -1,6 +1,7 @@
 package mdk
 
 import (
+	"errors"
 	"fmt"
 	"runtime"
 	"unsafe"
@@ -58,7 +59,7 @@ func ReadResults(packedDatas ResultOffset) []*Result {
 	t, offsetU32, size := utils.UnpackUI64(uint64(packedDatas))
 
 	if t != types.ValueTypePack {
-		err := fmt.Errorf("can't unpack data, data type is not a type of valueTypePack. expected %d, got %d", types.ValueTypePack, t)
+		err := fmt.Errorf("can't unpack guest data, the type is not a valueTypePack. expected %d, got %d", types.ValueTypePack, t)
 		LogError("can't read results", err.Error())
 		return nil
 	}
@@ -229,4 +230,37 @@ func Free(packedDatas ...ArgData) {
 		_, offset, _ := utils.UnpackUI64(uint64(p))
 		free(uint64(offset))
 	}
+}
+
+func Return(params ...any) ResultOffset {
+
+	packedDatas := make([]uint64, len(params))
+
+	for i, p := range params {
+		// allocate memory for each value
+		offsetI64, err := AllocPack(p)
+		if err != nil {
+			err = errors.Join(fmt.Errorf("An error occurred while attempting to alloc memory for guest func return value %s", p), err)
+			LogError(err.Error())
+			return 0
+		}
+
+		packedDatas[i] = offsetI64
+	}
+
+	packedBytes := utils.Uint64ArrayToBytes(packedDatas)
+	packedByetesSize := uint32(len(packedBytes))
+	offsetI64 := AllocBytes(packedBytes, packedByetesSize)
+
+	offsetI32, err := utils.PackUI64(types.ValueTypePack, uint32(offsetI64), packedByetesSize)
+	if err != nil {
+		err = errors.Join(fmt.Errorf("Can't pack guest return data %d", packedDatas), err)
+		LogError(err.Error())
+		return 0
+	}
+
+	LogError("RES: ", packedBytes, offsetI64, offsetI32)
+
+	return ResultOffset(offsetI32)
+
 }
