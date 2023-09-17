@@ -98,7 +98,7 @@ func (hf *HostFunction) convertParamsToStruct(ctx context.Context, m ModuleProxy
 
 		packedData := &stackParams[i]
 
-		offset, offsetSize, data, err := m.Read(*packedData)
+		data, offset, offsetSize, err := m.Read(*packedData)
 		if err != nil {
 			err = errors.Join(errors.New("can't read params packed data"), err)
 			return nil, err

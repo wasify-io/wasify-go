@@ -44,9 +44,9 @@ func (r GuestFunctionResult) ReadResults() (Results, error) {
 	// Iterate over the packedData, unpack and read data of each element into a Result
 	for i, pd := range packedDatas {
 
-		_, _, d, _ := r.memory.Read(pd)
+		data, _, _, _ := r.memory.Read(pd)
 
-		results[i] = d
+		results[i] = data
 	}
 
 	return results, nil

@@ -13,7 +13,7 @@ type Module interface {
 
 type ModuleProxy interface {
 	GuestFunction(ctx context.Context, functionName string) GuestFunction
-	Read(packedData uint64) (offset uint32, size uint32, data any, err error)
+	Read(packedData uint64) (data any, offset uint32, size uint32, err error)
 	Write(offset uint32, data any) error
 	Free(offset uint32) error
 	Malloc(size uint32) (offset uint32, err error)
@@ -27,7 +27,7 @@ type GuestFunction interface {
 }
 
 type Memory interface {
-	Read(packedData uint64) (offset uint32, size uint32, data any, err error)
+	Read(packedData uint64) (data any, offset uint32, size uint32, err error)
 	ReadBytes(offset uint32, size uint32) ([]byte, error)
 	ReadByte(offset uint32) (byte, error)
 	ReadUint32(offset uint32) (uint32, error)

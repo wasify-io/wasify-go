@@ -76,7 +76,7 @@ type wazeroModule struct {
 // - size: The size or length of the data.
 // - data: The actual extracted data of the determined type (i.e., byte slice, uint32, uint64, float32, float64).
 // - error: An error if encountered (e.g., unsupported data type, out-of-range error).
-func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, any, error) {
+func (m *wazeroMemory) Read(packedData uint64) (any, uint32, uint32, error) {
 
 	var err error
 	var data any
@@ -105,10 +105,10 @@ func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, any, error) {
 
 	if err != nil {
 		m.log.Error(err.Error())
-		return 0, 0, nil, err
+		return nil, 0, 0, err
 	}
 
-	return offset, size, data, err
+	return data, offset, size, err
 }
 
 func (m *wazeroMemory) ReadBytes(offset uint32, size uint32) ([]byte, error) {
@@ -351,7 +351,7 @@ type wazeroModuleProxy struct {
 func (mp *wazeroModuleProxy) GuestFunction(ctx context.Context, name string) GuestFunction {
 	return mp.wazeroModule.GuestFunction(ctx, name)
 }
-func (mp *wazeroModuleProxy) Read(packedData uint64) (uint32, uint32, any, error) {
+func (mp *wazeroModuleProxy) Read(packedData uint64) (any, uint32, uint32, error) {
 	return mp.wazeroModule.Memory().Read(packedData)
 }
 func (mp *wazeroModuleProxy) Write(offset uint32, data any) error {
