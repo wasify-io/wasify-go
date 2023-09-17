@@ -29,7 +29,20 @@ type GuestFunction interface {
 type Memory interface {
 	Read(packedData uint64) (offset uint32, size uint32, data any, err error)
 	ReadBytes(offset uint32, size uint32) ([]byte, error)
+	ReadByte(offset uint32) (byte, error)
+	ReadUint32(offset uint32) (uint32, error)
+	ReadUint64(offset uint32) (uint64, error)
+	ReadFloat32(offset uint32) (float32, error)
+	ReadFloat64(offset uint32) (float64, error)
+	ReadString(offset uint32, size uint32) (string, error)
 	Write(offset uint32, data any) error
+	WriteBytes(offset uint32, v []byte) error
+	WriteByte(offset uint32, v byte) error
+	WriteUint32(offset uint32, v uint32) error
+	WriteUint64(offset uint32, v uint64) error
+	WriteFloat32(offset uint32, v float32) error
+	WriteFloat64(offset uint32, v float64) error
+	WriteString(offset uint32, v string) error
 	Free(offset uint32) error
 	Size() uint32
 	Malloc(size uint32) (uint32, error)

@@ -217,21 +217,13 @@ func AllocString(data string, offsetSize uint32) uint64 {
 	return stringToLeakedPtr(data, offsetSize)
 }
 
-// Free frees the memory.
-// // exported function
+// Return takes a variable number of parameters, packs them into a byte slice representation,
+// allocates memory for the packed data, and then returns a ResultOffset which represents the memory
+// offset of the packed data. If any error occurs during the process, it logs the error and returns a ResultOffset of 0.
 //
-//	func greet(var1, var2 mdk.ArgData) {
-//		defer Free(var1, var2)
+// params ...any: A variable number of parameters that need to be packed.
 //
-// ...
-// }
-func Free(packedDatas ...ArgData) {
-	for _, p := range packedDatas {
-		_, offset, _ := utils.UnpackUI64(uint64(p))
-		free(uint64(offset))
-	}
-}
-
+// ResultOffset: The offset in memory where the packed data starts.
 func Return(params ...any) ResultOffset {
 
 	packedDatas := make([]uint64, len(params))
@@ -260,8 +252,20 @@ func Return(params ...any) ResultOffset {
 		return 0
 	}
 
-	LogError("MDK packedDatas RES: ", packedBytes, offsetI32, offsetI64)
-
 	return ResultOffset(offsetI64)
+}
 
+// Free frees the memory.
+// // exported function
+//
+//	func greet(var1, var2 mdk.ArgData) {
+//		defer Free(var1, var2)
+//
+// ...
+// }
+func Free(packedDatas ...ArgData) {
+	for _, p := range packedDatas {
+		_, offset, _ := utils.UnpackUI64(uint64(p))
+		free(uint64(offset))
+	}
 }

@@ -13,6 +13,8 @@ type GuestFunctionResult struct {
 	memory     Memory
 }
 
+// ReadResults decodes the packedData from a GuestFunctionResult instance and retrieves a sequence of results.
+// Similar to mdk.ReadResults
 func (r GuestFunctionResult) ReadResults() (Results, error) {
 
 	if r.packedData == 0 {
@@ -22,33 +24,35 @@ func (r GuestFunctionResult) ReadResults() (Results, error) {
 	t, offsetU32, size := utils.UnpackUI64(uint64(r.packedData))
 
 	if t != types.ValueTypePack {
-		err := fmt.Errorf("can't unpack host data, the type is not a valueTypePack. expected %d, got %d", types.ValueTypePack, t)
+		err := fmt.Errorf("Can't unpack host data, the type is not a valueTypePack. expected %d, got %d", types.ValueTypePack, t)
 		return nil, err
 	}
 
-	fmt.Println("r.packedData", r.packedData, "T:", t, "offset32:", offsetU32, "size:", size)
+	bytes, err := r.memory.ReadBytes(offsetU32, size)
+	if err != nil {
+		err := errors.Join(errors.New("ReadResults error, can't read bytes:"), err)
+		return nil, err
+	}
+
+	packedDatas := utils.BytesToUint64Array(bytes)
 
 	// calculate the number of elements in the array
 	count := size / 8
 
-	// FIXME: Read packedDatas and unpack each value
-	bytes, _ := r.memory.ReadBytes(offsetU32, size)
-
-	packedDatas := utils.BytesToUint64Array(bytes)
-
-	data := make(Results, count)
+	results := make(Results, count)
 
 	// Iterate over the packedData, unpack and read data of each element into a Result
 	for i, pd := range packedDatas {
 
 		_, _, d, _ := r.memory.Read(pd)
 
-		data[i] = d
+		results[i] = d
 	}
 
-	return data, nil
+	return results, nil
 }
 
+// TODO: Free allocated date
 func (r *GuestFunctionResult) Free() {
 
 }
