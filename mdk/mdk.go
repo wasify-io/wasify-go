@@ -250,17 +250,18 @@ func Return(params ...any) ResultOffset {
 
 	packedBytes := utils.Uint64ArrayToBytes(packedDatas)
 	packedByetesSize := uint32(len(packedBytes))
-	offsetI64 := AllocBytes(packedBytes, packedByetesSize)
 
-	offsetI32, err := utils.PackUI64(types.ValueTypePack, uint32(offsetI64), packedByetesSize)
+	offsetI32 := uint32(AllocBytes(packedBytes, packedByetesSize))
+
+	offsetI64, err := utils.PackUI64(types.ValueTypePack, offsetI32, packedByetesSize)
 	if err != nil {
 		err = errors.Join(fmt.Errorf("Can't pack guest return data %d", packedDatas), err)
 		LogError(err.Error())
 		return 0
 	}
 
-	LogError("RES: ", packedBytes, offsetI64, offsetI32)
+	LogError("MDK packedDatas RES: ", packedBytes, offsetI32, offsetI64)
 
-	return ResultOffset(offsetI32)
+	return ResultOffset(offsetI64)
 
 }

@@ -84,6 +84,8 @@ func (m *wazeroMemory) Read(packedData uint64) (uint32, uint32, any, error) {
 	// Unpack the packedData to extract offset and size values.
 	valueType, offset, size := utils.UnpackUI64(packedData)
 
+	fmt.Println("READER: ", valueType, offset, size, "PACK: ", packedData)
+
 	switch ValueType(valueType) {
 	case ValueTypeBytes:
 		data, err = m.ReadBytes(offset, size)

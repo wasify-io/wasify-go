@@ -13,42 +13,40 @@ type GuestFunctionResult struct {
 	memory     Memory
 }
 
-func (r GuestFunctionResult) ReadResults() error {
+func (r GuestFunctionResult) ReadResults() (Results, error) {
 
 	if r.packedData == 0 {
-		return errors.New("packedData is empty")
+		return nil, errors.New("packedData is empty")
 	}
 
-	t, offsetU32, _ := utils.UnpackUI64(uint64(r.packedData))
+	t, offsetU32, size := utils.UnpackUI64(uint64(r.packedData))
 
 	if t != types.ValueTypePack {
 		err := fmt.Errorf("can't unpack host data, the type is not a valueTypePack. expected %d, got %d", types.ValueTypePack, t)
-		return err
+		return nil, err
 	}
 
+	fmt.Println("r.packedData", r.packedData, "T:", t, "offset32:", offsetU32, "size:", size)
+
 	// calculate the number of elements in the array
-	// count := size / 8
+	count := size / 8
 
 	// FIXME: Read packedDatas and unpack each value
-	_, _, _, _ = r.memory.Read(uint64(offsetU32))
-	// fmt.Println(bytes)
+	bytes, _ := r.memory.ReadBytes(offsetU32, size)
 
-	// data := make([]*Result, count)
+	packedDatas := utils.BytesToUint64Array(bytes)
 
-	// // Iterate over the packedData, unpack and read data of each element into a Result
-	// for i, pd := range packedData {
+	data := make(Results, count)
 
-	// 	v, s := ReadAny(ArgData(pd))
+	// Iterate over the packedData, unpack and read data of each element into a Result
+	for i, pd := range packedDatas {
 
-	// 	data[i] = &Result{
-	// 		Size: s,
-	// 		Data: v,
-	// 	}
-	// }
+		_, _, d, _ := r.memory.Read(pd)
 
-	// return data
+		data[i] = d
+	}
 
-	return nil
+	return data, nil
 }
 
 func (r *GuestFunctionResult) Free() {
