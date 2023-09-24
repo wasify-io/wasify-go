@@ -2,8 +2,6 @@ package utils
 
 import (
 	"testing"
-
-	"github.com/wasify-io/wasify-go/internal/memory"
 )
 
 func TestCalculateHash(t *testing.T) {
@@ -47,24 +45,5 @@ func TestUint64ArrayToBytes(t *testing.T) {
 		if b != expected[i] {
 			t.Errorf("at index %d: expected byte %d but got %d", i, expected[i], b)
 		}
-	}
-}
-
-func TestAllocationMap(t *testing.T) {
-	am := memory.NewAllocationMap[uint32, uint32]()
-	am.Store(1, 100)
-	am.Store(2, 200)
-
-	if size, _ := am.Load(1); size != 100 {
-		t.Errorf("expected size 100 for offset 1, but got %d", size)
-	}
-
-	am.Delete(1)
-	if _, exists := am.Load(1); exists {
-		t.Error("expected offset 1 to be deleted, but it still exists")
-	}
-
-	if total := am.TotalSize(); total != 200 {
-		t.Errorf("expected total size to be 200, but got %d", total)
 	}
 }

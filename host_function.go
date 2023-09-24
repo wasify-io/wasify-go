@@ -75,7 +75,6 @@ type HostFunctionCallback func(ctx context.Context, moduleProxy ModuleProxy, sta
 // convertParamsToStruct converts the packed stack parameters to a structured format.
 // It uses the ModuleProxy instance to read data for each parameter from memory,
 // creating a Params slice containing information about each parameter's offset, size, and value.
-// Additionally, it stores allocation information in the host function's allocationMap.
 //
 // convertParamsToStruct simplifies the process of reading data by using structured information,
 // allowing for easier access to parameter data instead of dealing with memory stacks and offsets.

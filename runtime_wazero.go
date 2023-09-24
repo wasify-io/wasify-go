@@ -149,11 +149,6 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 
 		// Associate the host function with module-related information.
 		// This configuration ensures that the host function can access ModuleConfig data from various contexts.
-		// Additionally, we set up an allocationMap specific to the host function, creating a map that stores
-		// offsets and sizes relevant to the host function's operations. This allows us to manage and clean up
-		// user resources effectively.
-		// We use allocationMap operations for Params provided in host function and Results, which originally
-		// should be freed up.
 		// See host_function.go for more details.
 		hf.moduleConfig = moduleConfig
 
