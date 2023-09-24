@@ -5,6 +5,7 @@ package wasify
 import (
 	"context"
 	"errors"
+	"os"
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
@@ -223,6 +224,9 @@ func (r *wazeroRuntime) instantiateModule(ctx context.Context, moduleConfig *Mod
 
 	// TODO: Add more configurations
 	cfg := wazero.NewModuleConfig()
+	cfg = cfg.WithStdin(os.Stdin)
+	cfg = cfg.WithStdout(os.Stdout)
+	cfg = cfg.WithStderr(os.Stderr)
 
 	if moduleConfig != nil && moduleConfig.FSConfig.Enabled {
 		cfg = cfg.WithFSConfig(

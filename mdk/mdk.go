@@ -10,12 +10,8 @@ import (
 	"github.com/wasify-io/wasify-go/internal/utils"
 )
 
-// ArgData represents an offset into WebAssembly memory that refers to an argument's location.
-// This packed data representation consists of a data type, offset and the size of the argument data.
-type ArgData uint64
-
-// ResultOffset represents an offset into WebAssembly memory for function results.
-type ResultOffset uint64
+type PackedData uint64
+type PackedDataArray uint64
 
 // Result is a structure that contains a size and a generic data representation for function results.
 type Result struct {
@@ -32,7 +28,7 @@ type Result struct {
 //
 // ⚠️ Note: The ArgData returned by the Arg function does not need to be manually deallocated.
 // The memory management is handled on the host side, where the allocated memory is automatically deallocated.
-func Arg(value any) ArgData {
+func Arg(value any) PackedData {
 
 	packedData, err := AllocPack(value)
 	if err != nil {
@@ -42,7 +38,7 @@ func Arg(value any) ArgData {
 
 	runtime.KeepAlive(value)
 
-	return ArgData(packedData)
+	return packedData
 }
 
 // ReadResults extracts an array of Result from the given packed data.
@@ -50,7 +46,7 @@ func Arg(value any) ArgData {
 // If the type is valid, it calculates the number of elements in the data,
 // reads the packed pointers and sizes, and then extracts the actual data
 // for each element, storing it in a Result struct.
-func ReadResults(packedDatas ResultOffset) []*Result {
+func ReadResults(packedDatas PackedDataArray) []*Result {
 
 	if packedDatas == 0 {
 		return nil
@@ -68,14 +64,14 @@ func ReadResults(packedDatas ResultOffset) []*Result {
 	count := size / 8
 
 	// read the packed pointers and sizes from the array
-	packedData := unsafe.Slice(ptrToData[uint64](uint64(offsetU32)), count)
+	packedData := unsafe.Slice(ptrToData[PackedData](uint64(offsetU32)), count)
 
 	data := make([]*Result, count)
 
 	// Iterate over the packedData, unpack and read data of each element into a Result
 	for i, pd := range packedData {
 
-		v, s := ReadAny(ArgData(pd))
+		v, s := ReadAny(pd)
 
 		data[i] = &Result{
 			Size: s,
@@ -96,7 +92,7 @@ func ReadResults(packedDatas ResultOffset) []*Result {
 //		res2 := mdk.ReadI32(var2)
 //
 // ...
-func ReadAny(packedData ArgData) (any, uint32) {
+func ReadAny(packedData PackedData) (any, uint32) {
 
 	valueType, _, size := utils.UnpackUI64(uint64(packedData))
 	var value any
@@ -124,37 +120,37 @@ func ReadAny(packedData ArgData) (any, uint32) {
 	return value, size
 }
 
-func ReadBytes(packedData ArgData) ([]byte, uint32) {
+func ReadBytes(packedData PackedData) ([]byte, uint32) {
 	_, offsetU32, size := unpackDataAndCheckType(packedData, types.ValueTypeBytes)
 	return unsafe.Slice(ptrToData[byte](uint64(offsetU32)), int(size)), size
 }
 
-func ReadByte(packedData ArgData) byte {
+func ReadByte(packedData PackedData) byte {
 	_, offsetU32, _ := unpackDataAndCheckType(packedData, types.ValueTypeByte)
 	return *ptrToData[byte](uint64(offsetU32))
 }
 
-func ReadI32(packedData ArgData) uint32 {
+func ReadI32(packedData PackedData) uint32 {
 	_, offsetU32, _ := unpackDataAndCheckType(packedData, types.ValueTypeI32)
 	return *ptrToData[uint32](uint64(offsetU32))
 }
 
-func ReadI64(packedData ArgData) uint64 {
+func ReadI64(packedData PackedData) uint64 {
 	_, offsetU32, _ := unpackDataAndCheckType(packedData, types.ValueTypeI64)
 	return *ptrToData[uint64](uint64(offsetU32))
 }
 
-func ReadF32(packedData ArgData) float32 {
+func ReadF32(packedData PackedData) float32 {
 	_, offsetU32, _ := unpackDataAndCheckType(packedData, types.ValueTypeF32)
 	return *ptrToData[float32](uint64(offsetU32))
 }
 
-func ReadF64(packedData ArgData) float64 {
+func ReadF64(packedData PackedData) float64 {
 	_, offsetU32, _ := unpackDataAndCheckType(packedData, types.ValueTypeF64)
 	return *ptrToData[float64](uint64(offsetU32))
 }
 
-func ReadString(packedData ArgData) (string, uint32) {
+func ReadString(packedData PackedData) (string, uint32) {
 	_, offsetU32, size := unpackDataAndCheckType(packedData, types.ValueTypeString)
 	data := unsafe.Slice(ptrToData[byte](uint64(offsetU32)), int(size))
 	return string(data), size
@@ -162,7 +158,7 @@ func ReadString(packedData ArgData) (string, uint32) {
 
 // AllocPack prepares data for interaction with WebAssembly by allocating the necessary memory.
 // It accepts a generic input and returns a uint64 value that combines the data type, memory offset, size.
-func AllocPack(data any) (uint64, error) {
+func AllocPack(data any) (PackedData, error) {
 
 	dataType, offsetSize, err := types.GetOffsetSizeAndDataTypeByConversion(data)
 	if err != nil {
@@ -192,7 +188,9 @@ func AllocPack(data any) (uint64, error) {
 		return 0, err
 	}
 
-	return utils.PackUI64(dataType, uint32(offset), offsetSize)
+	// TODO: change this
+	pd, err := utils.PackUI64(dataType, uint32(offset), offsetSize)
+	return PackedData(pd), err
 }
 
 func AllocBytes(data []byte, offsetSize uint32) uint64 {
@@ -224,7 +222,7 @@ func AllocString(data string, offsetSize uint32) uint64 {
 // params ...any: A variable number of parameters that need to be packed.
 //
 // ResultOffset: The offset in memory where the packed data starts.
-func Return(params ...any) ResultOffset {
+func Return(params ...any) PackedDataArray {
 
 	packedDatas := make([]uint64, len(params))
 
@@ -237,9 +235,10 @@ func Return(params ...any) ResultOffset {
 			return 0
 		}
 
-		packedDatas[i] = offsetI64
+		packedDatas[i] = uint64(offsetI64)
 	}
 
+	// TODO: change this
 	packedBytes := utils.Uint64ArrayToBytes(packedDatas)
 	packedByetesSize := uint32(len(packedBytes))
 
@@ -252,18 +251,18 @@ func Return(params ...any) ResultOffset {
 		return 0
 	}
 
-	return ResultOffset(offsetI64)
+	return PackedDataArray(offsetI64)
 }
 
 // Free frees the memory.
 // // exported function
 //
-//	func greet(var1, var2 mdk.ArgData) {
+//	func greet(var1, var2 uint64) {
 //		defer Free(var1, var2)
 //
 // ...
 // }
-func Free(packedDatas ...ArgData) {
+func Free(packedDatas ...uint64) {
 	for _, p := range packedDatas {
 		_, offset, _ := utils.UnpackUI64(uint64(p))
 		free(uint64(offset))

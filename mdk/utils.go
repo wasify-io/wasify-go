@@ -10,6 +10,70 @@ import (
 	"github.com/wasify-io/wasify-go/internal/utils"
 )
 
+func readBytes(packedData PackedData) ([]byte, uint32) {
+	_, offsetU32, size := unpackDataAndCheckType(packedData, types.ValueTypeBytes)
+	return unsafe.Slice(ptrToData[byte](uint64(offsetU32)), int(size)), size
+}
+
+func readByte(packedData PackedData) byte {
+	_, offsetU32, _ := unpackDataAndCheckType(packedData, types.ValueTypeByte)
+	return *ptrToData[byte](uint64(offsetU32))
+}
+
+func readI32(packedData PackedData) uint32 {
+	_, offsetU32, _ := unpackDataAndCheckType(packedData, types.ValueTypeI32)
+	return *ptrToData[uint32](uint64(offsetU32))
+}
+
+func readI64(packedData PackedData) uint64 {
+	_, offsetU32, _ := unpackDataAndCheckType(packedData, types.ValueTypeI64)
+	return *ptrToData[uint64](uint64(offsetU32))
+}
+
+func readF32(packedData PackedData) float32 {
+	_, offsetU32, _ := unpackDataAndCheckType(packedData, types.ValueTypeF32)
+	return *ptrToData[float32](uint64(offsetU32))
+}
+
+func readF64(packedData PackedData) float64 {
+	_, offsetU32, _ := unpackDataAndCheckType(packedData, types.ValueTypeF64)
+	return *ptrToData[float64](uint64(offsetU32))
+}
+
+func readString(packedData PackedData) (string, uint32) {
+	_, offsetU32, size := unpackDataAndCheckType(packedData, types.ValueTypeString)
+	data := unsafe.Slice(ptrToData[byte](uint64(offsetU32)), int(size))
+	return string(data), size
+}
+
+func readAny(packedData PackedData) (any, uint32) {
+
+	valueType, _, size := utils.UnpackUI64(uint64(packedData))
+	var value any
+
+	switch valueType {
+	case types.ValueTypeBytes:
+		value, _ = readBytes(packedData)
+	case types.ValueTypeByte:
+		value = readByte(packedData)
+	case types.ValueTypeI32:
+		value = readI32(packedData)
+	case types.ValueTypeI64:
+		value = readI64(packedData)
+	case types.ValueTypeF32:
+		value = readF32(packedData)
+	case types.ValueTypeF64:
+		value = readF64(packedData)
+	case types.ValueTypeString:
+		value, size = readString(packedData)
+	default:
+		LogError("can't read the datatype: %s", valueType)
+		return nil, 0
+	}
+
+	return value, size
+}
+
 // free deallocates the memory previously allocated by a call to malloc (C.malloc).
 // The offset parameter is a uint64 representing the starting address of the block
 // of linear memory to be deallocated.
@@ -88,7 +152,7 @@ func ptrToData[T any](ptr uint64) *T {
 	return (*T)(unsafe.Pointer(uintptr(ptr)))
 }
 
-func unpackDataAndCheckType(packedData ArgData, expectedType types.ValueType) (types.ValueType, uint32, uint32) {
+func unpackDataAndCheckType(packedData PackedData, expectedType types.ValueType) (types.ValueType, uint32, uint32) {
 	valueType, offsetU32, size := utils.UnpackUI64(uint64(packedData))
 	if valueType != expectedType {
 		LogError("Unexpected data type. Expected %s, but got %s", expectedType, valueType)

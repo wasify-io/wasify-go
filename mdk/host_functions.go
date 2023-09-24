@@ -2,8 +2,10 @@ package mdk
 
 import "fmt"
 
+// TODO: take a look
+//
 //go:wasmimport wasify log
-func _log(ArgData, ArgData)
+func _log(PackedData, PackedData)
 
 func Log(format string, a ...any) {
 	LogDebug(format, a...)
