@@ -120,7 +120,7 @@ func (hf *HostFunction) convertParamsToStruct(ctx context.Context, m ModuleProxy
 
 // writeResultsToMemory allocates memory to store return values and their offsets,
 // and then writes the return values to memory using the ModuleProxy instance.
-// It also packs and returns the data as packedDatas and the returnOffsets map.
+// It also packs and returns the data as packedDataArray and the returnOffsets map.
 //
 // writeResultsToMemory handles the process as follows:
 // It gathers all the returned values, allocates memory for each value based on its type and size,
@@ -173,7 +173,7 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	}
 
 	// First, allocate memory for each byte slice and store the offsets in a slice
-	packedDatas := make([]uint64, len(*results))
+	packedDataArray := make([]uint64, len(*results))
 
 	// +1 len because for the offset which holds all offsets
 	returnOffsets := make(map[uint32]uint32, len(*results)+1)
@@ -211,14 +211,14 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 		}
 
 		// Pack the offset and size into a single uint64
-		packedDatas[i], err = utils.PackUI64(valueType, offset, offsetSize)
+		packedDataArray[i], err = utils.PackUI64(valueType, offset, offsetSize)
 		if err != nil {
 			return nil, nil, err
 		}
 	}
 
 	// Then, allocate memory for the array of packed offsets and sizes
-	offsetSize := uint32(len(packedDatas) * 8)
+	offsetSize := uint32(len(packedDataArray) * 8)
 	offset, err := m.Malloc(offsetSize)
 	if err != nil {
 		err = errors.Join(errors.New("can't allocate memory for offset of packed return values"), err)
@@ -230,13 +230,13 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	// for later cleanup.
 	hf.allocationMap.Store(offset, offsetSize)
 
-	err = m.Write(offset, utils.Uint64ArrayToBytes(packedDatas))
+	err = m.Write(offset, utils.Uint64ArrayToBytes(packedDataArray))
 	if err != nil {
 		err = errors.Join(errors.New("can't write offset of packed return values"), err)
 		return nil, nil, err
 	}
 
-	// Final packed data, which contains offset and size of packedDatas slice
+	// Final packed data, which contains offset and size of packedDataArray slice
 	packedData, err := utils.PackUI64(types.ValueTypePack, offset, offsetSize)
 	if err != nil {
 		return nil, nil, err
@@ -245,10 +245,10 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	// Store final packedData into linear memory
 	stackParams[0] = packedData
 
-	// Append final packedData to existing packedDatas slice for later cleanup
-	packedDatas = append(packedDatas, packedData)
+	// Append final packedData to existing packedDataArray slice for later cleanup
+	packedDataArray = append(packedDataArray, packedData)
 
-	return packedDatas, returnOffsets, nil
+	return packedDataArray, returnOffsets, nil
 }
 
 func (hf *HostFunction) freeParams(m ModuleProxy, params Params) error {

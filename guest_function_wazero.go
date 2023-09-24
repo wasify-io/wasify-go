@@ -91,7 +91,7 @@ func (gf *wazeroGuestFunction) Invoke(params ...any) (*GuestFunctionResult, erro
 		}
 	}
 
-	packedDatas, err := gf.call(stack...)
+	packedDataArray, err := gf.call(stack...)
 	if err != nil {
 		err = errors.Join(fmt.Errorf("An error occurred while attempting to invoke the guest function: %s", gf.name), err)
 		gf.moduleConfig.log.Error(err.Error())
@@ -99,7 +99,7 @@ func (gf *wazeroGuestFunction) Invoke(params ...any) (*GuestFunctionResult, erro
 	}
 
 	res := &GuestFunctionResult{
-		packedData: packedDatas,
+		packedData: packedDataArray,
 		memory:     gf.memory,
 	}
 

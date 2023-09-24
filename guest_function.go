@@ -34,7 +34,7 @@ func (r GuestFunctionResult) ReadResults() (Results, error) {
 		return nil, err
 	}
 
-	packedDatas := utils.BytesToUint64Array(bytes)
+	packedDataArray := utils.BytesToUint64Array(bytes)
 
 	// calculate the number of elements in the array
 	count := size / 8
@@ -42,7 +42,7 @@ func (r GuestFunctionResult) ReadResults() (Results, error) {
 	results := make(Results, count)
 
 	// Iterate over the packedData, unpack and read data of each element into a Result
-	for i, pd := range packedDatas {
+	for i, pd := range packedDataArray {
 
 		data, _, _, _ := r.memory.Read(pd)
 

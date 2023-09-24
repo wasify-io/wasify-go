@@ -46,13 +46,13 @@ func Arg(value any) PackedData {
 // If the type is valid, it calculates the number of elements in the data,
 // reads the packed pointers and sizes, and then extracts the actual data
 // for each element, storing it in a Result struct.
-func ReadResults(packedDatas MultiPackedData) []*Result {
+func ReadResults(packedDataArray MultiPackedData) []*Result {
 
-	if packedDatas == 0 {
+	if packedDataArray == 0 {
 		return nil
 	}
 
-	t, offsetU32, size := utils.UnpackUI64(uint64(packedDatas))
+	t, offsetU32, size := utils.UnpackUI64(uint64(packedDataArray))
 
 	if t != types.ValueTypePack {
 		err := fmt.Errorf("can't unpack guest data, the type is not a valueTypePack. expected %d, got %d", types.ValueTypePack, t)
@@ -224,7 +224,7 @@ func AllocString(data string, offsetSize uint32) uint64 {
 // MultiPackedData: The offset in memory where the packed array data starts.
 func Return(params ...any) MultiPackedData {
 
-	packedDatas := make([]uint64, len(params))
+	packedDataArray := make([]uint64, len(params))
 
 	for i, p := range params {
 		// allocate memory for each value
@@ -235,18 +235,18 @@ func Return(params ...any) MultiPackedData {
 			return 0
 		}
 
-		packedDatas[i] = uint64(offsetI64)
+		packedDataArray[i] = uint64(offsetI64)
 	}
 
 	// TODO: change this
-	packedBytes := utils.Uint64ArrayToBytes(packedDatas)
+	packedBytes := utils.Uint64ArrayToBytes(packedDataArray)
 	packedByetesSize := uint32(len(packedBytes))
 
 	offsetI32 := uint32(AllocBytes(packedBytes, packedByetesSize))
 
 	offsetI64, err := utils.PackUI64(types.ValueTypePack, offsetI32, packedByetesSize)
 	if err != nil {
-		err = errors.Join(fmt.Errorf("Can't pack guest return data %d", packedDatas), err)
+		err = errors.Join(fmt.Errorf("Can't pack guest return data %d", packedDataArray), err)
 		LogError(err.Error())
 		return 0
 	}
