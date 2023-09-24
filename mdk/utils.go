@@ -11,6 +11,16 @@ import (
 	"github.com/wasify-io/wasify-go/internal/types"
 )
 
+// ptrToData converts a given memory address (ptr) into a pointer of type T.
+// This function uses unsafe operations to cast the provided uint64 pointer
+// to a pointer of the desired type, allowing for direct memory access to the
+// underlying data.
+//
+// return a pointer of type T pointing to the data at the specified memory address.
+func ptrToData[T any](ptr uint64) *T {
+	return (*T)(unsafe.Pointer(uintptr(ptr)))
+}
+
 func readBytes(offset64 uint64, size int) []byte {
 	return unsafe.Slice(ptrToData[byte](offset64), size)
 }
@@ -100,57 +110,11 @@ func stringToLeakedPtr(data string, offsetSize uint32) (offset uint64) {
 	return bytesToLeakedPtr(byteSlice, offsetSize)
 }
 
-// ptrToData converts a given memory address (ptr) into a pointer of type T.
-// This function uses unsafe operations to cast the provided uint64 pointer
-// to a pointer of the desired type, allowing for direct memory access to the
-// underlying data.
-//
-// return a pointer of type T pointing to the data at the specified memory address.
-func ptrToData[T any](ptr uint64) *T {
-	return (*T)(unsafe.Pointer(uintptr(ptr)))
-}
-
 // free deallocates the memory previously allocated by a call to malloc (C.malloc).
 // The offset parameter is a uint64 representing the starting address of the block
 // of linear memory to be deallocated.
 func free(offset uint64) {
 	C.free(unsafe.Pointer(uintptr(offset)))
-}
-
-func unpackDataAndCheckType(packedData PackedData, expectedType types.ValueType) (types.ValueType, uint32, uint32) {
-	valueType, offsetU32, size := unpackUI64(uint64(packedData))
-	if valueType != expectedType {
-		LogError("Unexpected data type. Expected %s, but got %s", expectedType, valueType)
-		return 0, 0, 0
-	}
-	return valueType, offsetU32, size
-}
-
-// multiPackedDataToBytes converts a slice of uint64 integers to a slice of bytes.
-// This function is typically used to convert a slice of packed data into bytes,
-// which can then be stored in linear memory.
-func multiPackedDataToBytes(data []PackedData) []byte {
-	// Calculate the total number of bytes required to represent all the uint64
-	// integers in the data slice. Since each uint64 integer is 8 bytes long,
-	// we multiply the number of uint64 integers by 8 to get the total number of bytes.
-	size := len(data) * 8
-
-	result := make([]byte, size)
-
-	for i, d := range data {
-		// Convert d to its little-endian byte representation and store it in the
-		// result slice. The binary.LittleEndian.PutUint64 function takes a slice
-		// of bytes and a uint64 integer, and writes the uint64 integer into the slice
-		// of bytes in little-endian order.
-		// The result[i<<3:] slice expression ensures that each uint64 integer is
-		// written to the correct position in the result slice.
-		// i<<3 is equivalent to i*8, but using bit shifting (<<3) is slightly more
-		// efficient than multiplication.
-		binary.LittleEndian.PutUint64(result[i<<3:], uint64(d))
-	}
-
-	// Return the result slice of bytes.
-	return result
 }
 
 // packUI64 takes a data type (in the form of a byte), a pointer (offset in memory),
@@ -215,4 +179,40 @@ func packF64(offset uint32) uint64 {
 }
 func packString(offset uint32, size uint32) uint64 {
 	return packUI64(types.ValueTypeString, offset, size)
+}
+
+// multiPackedDataToBytes converts a slice of uint64 integers to a slice of bytes.
+// This function is typically used to convert a slice of packed data into bytes,
+// which can then be stored in linear memory.
+func multiPackedDataToBytes(data []PackedData) []byte {
+	// Calculate the total number of bytes required to represent all the uint64
+	// integers in the data slice. Since each uint64 integer is 8 bytes long,
+	// we multiply the number of uint64 integers by 8 to get the total number of bytes.
+	size := len(data) * 8
+
+	result := make([]byte, size)
+
+	for i, d := range data {
+		// Convert d to its little-endian byte representation and store it in the
+		// result slice. The binary.LittleEndian.PutUint64 function takes a slice
+		// of bytes and a uint64 integer, and writes the uint64 integer into the slice
+		// of bytes in little-endian order.
+		// The result[i<<3:] slice expression ensures that each uint64 integer is
+		// written to the correct position in the result slice.
+		// i<<3 is equivalent to i*8, but using bit shifting (<<3) is slightly more
+		// efficient than multiplication.
+		binary.LittleEndian.PutUint64(result[i<<3:], uint64(d))
+	}
+
+	// Return the result slice of bytes.
+	return result
+}
+
+func unpackDataAndCheckType(packedData PackedData, expectedType types.ValueType) (types.ValueType, uint32, uint32) {
+	valueType, offsetU32, size := unpackUI64(uint64(packedData))
+	if valueType != expectedType {
+		LogError("Unexpected data type. Expected %s, but got %s", expectedType, valueType)
+		return 0, 0, 0
+	}
+	return valueType, offsetU32, size
 }

@@ -79,6 +79,34 @@ func (pd *PackedData) ReadString() string {
 	return readString(uint64(offsetU32), int(size))
 }
 
+func ReadBytes(offset uint64, size int) []byte {
+	return readBytes(offset, size)
+}
+
+func ReadByte(offset uint64) byte {
+	return readByte(offset)
+}
+
+func ReadI32(offset uint64) uint32 {
+	return readI32(offset)
+}
+
+func ReadI64(offset uint64) uint64 {
+	return readI64(offset)
+}
+
+func ReadF32(offset uint64) float32 {
+	return readF32(offset)
+}
+
+func ReadF64(offset uint64) float64 {
+	return readF64(offset)
+}
+
+func ReadString(offset uint64, size int) string {
+	return readString(offset, size)
+}
+
 type MultiPackedData uint64
 
 func (mpd *MultiPackedData) Read() []PackedData {
@@ -149,14 +177,14 @@ func WriteStringPack(data string) PackedData {
 	return PackedData(packString(uint32(WriteString(data, uint32(len(data)))), uint32(len(data))))
 }
 
-// Return takes a variable number of parameters, packs them into a byte slice representation,
+// WriteMultiPack takes a variable number of parameters, packs them into a byte slice representation,
 // allocates memory for the packed data, and then returns a MultiPackedData which represents the memory
 // offset of the packed data. If any error occurs during the process, it logs the error and returns a MultiPackedData of 0.
 //
 // params ...any: A variable number of parameters that need to be packed.
 //
 // MultiPackedData: The offset in memory where the packed array data starts.
-func Return(params ...PackedData) MultiPackedData {
+func WriteMultiPack(params ...PackedData) MultiPackedData {
 
 	multiPackedDataArray := make([]PackedData, len(params))
 
