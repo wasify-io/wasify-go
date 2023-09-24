@@ -26,5 +26,5 @@ func LogError(format string, a ...any) {
 }
 
 func _slog(format string, lvl byte, a ...any) {
-	_log(Arg(fmt.Sprintf(format, a...)), Arg(lvl))
+	_log(WriteStringPack(fmt.Sprintf(format, a...)), WriteBytePack(lvl))
 }
