@@ -13,12 +13,6 @@ import (
 type PackedData uint64
 type MultiPackedData uint64
 
-// Result is a structure that contains a size and a generic data representation for function results.
-type Result struct {
-	Size uint32
-	Data any
-}
-
 // Arg prepares data for passing as an argument to a host function in WebAssembly.
 // It accepts a generic data input and returns an ArgData which packs the memory offset and size of the data.
 // This function abstracts away the complexity of memory management and conversion for the user.
@@ -41,12 +35,8 @@ func Arg(value any) PackedData {
 	return packedData
 }
 
-// ReadResults extracts an array of Result from the given packed data.
-// It first checks the type of packed data to ensure it's of type ValueTypePack.
-// If the type is valid, it calculates the number of elements in the data,
-// reads the packed pointers and sizes, and then extracts the actual data
-// for each element, storing it in a Result struct.
-func ReadResults(packedDataArray MultiPackedData) []*Result {
+// TODO: add comment
+func ReadMultiPackData(packedDataArray MultiPackedData) []PackedData {
 
 	if packedDataArray == 0 {
 		return nil
@@ -66,63 +56,16 @@ func ReadResults(packedDataArray MultiPackedData) []*Result {
 	// read the packed pointers and sizes from the array
 	packedData := unsafe.Slice(ptrToData[PackedData](uint64(offsetU32)), count)
 
-	data := make([]*Result, count)
+	data := make([]PackedData, count)
 
-	// Iterate over the packedData, unpack and read data of each element into a Result
-	for i, pd := range packedData {
-
-		v, s := ReadAny(pd)
-
-		data[i] = &Result{
-			Size: s,
-			Data: v,
-		}
-	}
+	copy(data, packedData)
 
 	return data
 }
 
-// ReadAny reads the given packed data and extracts the underlying value based on its type.
-// The function supports reading various types including bytes, integers, floats, and strings.
-// It returns the extracted value and its size.
-// Example:
-//
-//	func greet(var1, var2 mdk.ArgData) {
-//		res1, size := mdk.ReadAny(var1)
-//		res2 := mdk.ReadI32(var2)
-//
-// ...
-func ReadAny(packedData PackedData) (any, uint32) {
-
-	valueType, _, size := utils.UnpackUI64(uint64(packedData))
-	var value any
-
-	switch valueType {
-	case types.ValueTypeBytes:
-		value, _ = ReadBytes(packedData)
-	case types.ValueTypeByte:
-		value = ReadByte(packedData)
-	case types.ValueTypeI32:
-		value = ReadI32(packedData)
-	case types.ValueTypeI64:
-		value = ReadI64(packedData)
-	case types.ValueTypeF32:
-		value = ReadF32(packedData)
-	case types.ValueTypeF64:
-		value = ReadF64(packedData)
-	case types.ValueTypeString:
-		value, size = ReadString(packedData)
-	default:
-		LogError("can't read the datatype: %s", valueType)
-		return nil, 0
-	}
-
-	return value, size
-}
-
-func ReadBytes(packedData PackedData) ([]byte, uint32) {
+func ReadBytes(packedData PackedData) []byte {
 	_, offsetU32, size := unpackDataAndCheckType(packedData, types.ValueTypeBytes)
-	return unsafe.Slice(ptrToData[byte](uint64(offsetU32)), int(size)), size
+	return unsafe.Slice(ptrToData[byte](uint64(offsetU32)), int(size))
 }
 
 func ReadByte(packedData PackedData) byte {
@@ -150,10 +93,10 @@ func ReadF64(packedData PackedData) float64 {
 	return *ptrToData[float64](uint64(offsetU32))
 }
 
-func ReadString(packedData PackedData) (string, uint32) {
+func ReadString(packedData PackedData) string {
 	_, offsetU32, size := unpackDataAndCheckType(packedData, types.ValueTypeString)
 	data := unsafe.Slice(ptrToData[byte](uint64(offsetU32)), int(size))
-	return string(data), size
+	return string(data)
 }
 
 // AllocPack prepares data for interaction with WebAssembly by allocating the necessary memory.
