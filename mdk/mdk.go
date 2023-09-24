@@ -11,7 +11,7 @@ import (
 )
 
 type PackedData uint64
-type PackedDataArray uint64
+type MultiPackedData uint64
 
 // Result is a structure that contains a size and a generic data representation for function results.
 type Result struct {
@@ -46,7 +46,7 @@ func Arg(value any) PackedData {
 // If the type is valid, it calculates the number of elements in the data,
 // reads the packed pointers and sizes, and then extracts the actual data
 // for each element, storing it in a Result struct.
-func ReadResults(packedDatas PackedDataArray) []*Result {
+func ReadResults(packedDatas MultiPackedData) []*Result {
 
 	if packedDatas == 0 {
 		return nil
@@ -216,13 +216,13 @@ func AllocString(data string, offsetSize uint32) uint64 {
 }
 
 // Return takes a variable number of parameters, packs them into a byte slice representation,
-// allocates memory for the packed data, and then returns a ResultOffset which represents the memory
-// offset of the packed data. If any error occurs during the process, it logs the error and returns a ResultOffset of 0.
+// allocates memory for the packed data, and then returns a MultiPackedData which represents the memory
+// offset of the packed data. If any error occurs during the process, it logs the error and returns a MultiPackedData of 0.
 //
 // params ...any: A variable number of parameters that need to be packed.
 //
-// ResultOffset: The offset in memory where the packed data starts.
-func Return(params ...any) PackedDataArray {
+// MultiPackedData: The offset in memory where the packed array data starts.
+func Return(params ...any) MultiPackedData {
 
 	packedDatas := make([]uint64, len(params))
 
@@ -251,19 +251,19 @@ func Return(params ...any) PackedDataArray {
 		return 0
 	}
 
-	return PackedDataArray(offsetI64)
+	return MultiPackedData(offsetI64)
 }
 
 // Free frees the memory.
 // // exported function
 //
-//	func greet(var1, var2 uint64) {
+//	func greet(var1, var2 PackedData) {
 //		defer Free(var1, var2)
 //
 // ...
 // }
-func Free(packedDatas ...uint64) {
-	for _, p := range packedDatas {
+func Free(packedData ...PackedData) {
+	for _, p := range packedData {
 		_, offset, _ := utils.UnpackUI64(uint64(p))
 		free(uint64(offset))
 	}
