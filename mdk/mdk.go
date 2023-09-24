@@ -79,6 +79,11 @@ func (pd *PackedData) ReadString() string {
 	return readString(uint64(offsetU32), int(size))
 }
 
+func (pd *PackedData) Free() {
+	_, offset, _ := unpackUI64(uint64(*pd))
+	free(uint64(offset))
+}
+
 func ReadBytes(offset uint64, size int) []byte {
 	return readBytes(offset, size)
 }
@@ -116,14 +121,12 @@ func (mpd *MultiPackedData) Read() []PackedData {
 	}
 
 	t, offsetU32, size := unpackMultiPackedData(*mpd)
-
 	if t != types.ValueTypePack {
 		err := fmt.Errorf("can't unpack guest data, the type is not a valueTypePack. expected %d, got %d", types.ValueTypePack, t)
 		LogError("can't read results", err.Error())
 		return nil
 	}
 
-	// calculate the number of elements in the array
 	count := size / 8
 
 	data := make([]PackedData, count)
@@ -131,6 +134,19 @@ func (mpd *MultiPackedData) Read() []PackedData {
 	copy(data, unsafe.Slice(ptrToData[PackedData](uint64(offsetU32)), count))
 
 	return data
+}
+
+func (mpd *MultiPackedData) Free() {
+
+	// free offsets of each packed data in the array
+	offsets := mpd.Read()
+	for _, offset := range offsets {
+		offset.Free()
+	}
+
+	// free self offset of multipackdata
+	_, offset, _ := unpackUI64(uint64(*mpd))
+	free(uint64(offset))
 }
 
 func WriteBytes(data []byte, offsetSize uint32) uint64 {
@@ -194,33 +210,4 @@ func WriteMultiPack(params ...PackedData) MultiPackedData {
 	packedByetesSize := uint32(len(packedBytes))
 
 	return MultiPackedData(packUI64(types.ValueTypePack, uint32(WriteBytes(packedBytes, packedByetesSize)), packedByetesSize))
-}
-
-// FreePack unpacks packedData and frees the memory.
-// // exported function
-//
-//	func greet(var1, var2 PackedData) {
-//		defer Free(var1, var2)
-//
-// ...
-// }
-func FreePack(packedData ...PackedData) {
-	for _, p := range packedData {
-		_, offset, _ := unpackUI64(uint64(p))
-		free(uint64(offset))
-	}
-}
-
-// Free frees the memory.
-// // exported function
-//
-//	func greet(var1, var2 PackedData) {
-//		defer Free(var1, var2)
-//
-// ...
-// }
-func Free(offsets ...uint64) {
-	for _, offset := range offsets {
-		free(uint64(offset))
-	}
 }
