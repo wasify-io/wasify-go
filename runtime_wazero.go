@@ -10,7 +10,6 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
-	"github.com/wasify-io/wasify-go/internal/memory"
 	"github.com/wasify-io/wasify-go/internal/utils"
 )
 
@@ -157,7 +156,6 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 		// should be freed up.
 		// See host_function.go for more details.
 		hf.moduleConfig = moduleConfig
-		hf.allocationMap = memory.NewAllocationMap[uint32, uint32]()
 
 		// If hsot function has any return values, we pack it as a single uint64
 		var resultValuesPackedData = []ValueType{}

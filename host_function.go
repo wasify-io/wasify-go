@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/wasify-io/wasify-go/internal/memory"
 	"github.com/wasify-io/wasify-go/internal/types"
 	"github.com/wasify-io/wasify-go/internal/utils"
 )
@@ -62,7 +61,6 @@ type HostFunction struct {
 	Results []ValueType
 
 	// Allocation map to track parameter and return value allocations for host func.
-	allocationMap *memory.AllocationMap[uint32, uint32]
 
 	// Configuration of the associated module.
 	moduleConfig *ModuleConfig
@@ -109,8 +107,6 @@ func (hf *HostFunction) convertParamsToStruct(ctx context.Context, m ModuleProxy
 			Size:   offsetSize,
 			Value:  data,
 		}
-
-		hf.allocationMap.Store(offset, offsetSize)
 
 	}
 
@@ -200,10 +196,6 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 
 		returnOffsets[offset] = offsetSize
 
-		// Add offset and offset size in the hsot function's allocationMap
-		// for later cleanup.
-		hf.allocationMap.Store(offset, offsetSize)
-
 		err = m.Write(offset, resultValue)
 		if err != nil {
 			err = errors.Join(errors.New("can't write return value"), err)
@@ -226,9 +218,6 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 	}
 
 	returnOffsets[offset] = offsetSize
-	// Add offset and offset size in the hsot function's allocationMap
-	// for later cleanup.
-	hf.allocationMap.Store(offset, offsetSize)
 
 	err = m.Write(offset, utils.Uint64ArrayToBytes(packedDataArray))
 	if err != nil {
@@ -250,38 +239,3 @@ func (hf *HostFunction) writeResultsToMemory(ctx context.Context, m ModuleProxy,
 
 	return packedDataArray, returnOffsets, nil
 }
-
-// TODO: remove allocs
-// func (hf *HostFunction) freeParams(m ModuleProxy, params Params) error {
-
-// 	for _, param := range params {
-// 		if _, ok := hf.allocationMap.Load(param.Offset); !ok {
-// 			continue
-// 		}
-
-// 		err := m.Free(param.Offset)
-// 		if err != nil {
-// 			err = errors.Join(errors.New("can't free offset of param"), err)
-// 			return err
-// 		}
-
-// 		hf.allocationMap.Delete(param.Offset)
-// 	}
-
-// 	return nil
-// }
-
-// func (hf *HostFunction) freeResults(m ModuleProxy, resultOffsets map[uint32]uint32) error {
-
-// 	for offsetI32 := range resultOffsets {
-// 		err := m.Free(offsetI32)
-// 		if err != nil {
-// 			err = errors.Join(errors.New("can't free offset of return value"), err)
-// 			return err
-// 		}
-
-// 		hf.allocationMap.Delete(offsetI32)
-// 	}
-
-// 	return nil
-// }
