@@ -24,17 +24,8 @@ const (
 )
 
 // Param defines the attributes of a function parameter.
-type Param struct {
-	// Offset within memory.
-	Offset uint32
-
-	// Size of the data.
-	Size uint32
-
-	// Actual data value, passed from guest function as an argument.
-	Value any
-}
-type Params []Param
+type MultiPackedData uint64
+type PackedData uint64
 
 // Result represents the value returned from a function.
 type Result any
@@ -70,7 +61,7 @@ type HostFunction struct {
 //
 // HostFunctionCallback encapsulates the runtime's internal implementation details.
 // It serves as an intermediary invoked between the processing of function parameters and the final return of the function.
-type HostFunctionCallback func(ctx context.Context, moduleProxy ModuleProxy, stackParams Params) *Results
+type HostFunctionCallback func(ctx context.Context, moduleProxy ModuleProxy, packedDataArray []PackedData) MultiPackedData
 
 // convertParamsToStruct converts the packed stack parameters to a structured format.
 // It uses the ModuleProxy instance to read data for each parameter from memory,
@@ -78,7 +69,7 @@ type HostFunctionCallback func(ctx context.Context, moduleProxy ModuleProxy, sta
 //
 // convertParamsToStruct simplifies the process of reading data by using structured information,
 // allowing for easier access to parameter data instead of dealing with memory stacks and offsets.
-func (hf *HostFunction) convertParamsToStruct(ctx context.Context, m ModuleProxy, stackParams []uint64) (Params, error) {
+func (hf *HostFunction) convertParamsToStruct(ctx context.Context, m ModuleProxy, stackParams []uint64) ([]PackedData, error) {
 
 	// If user did not define params, skip the whole process, we still might get stackParams[0] = 0
 	if len(hf.Params) == 0 {
@@ -89,27 +80,13 @@ func (hf *HostFunction) convertParamsToStruct(ctx context.Context, m ModuleProxy
 		return nil, fmt.Errorf("%s: params mismatch expected: %d received: %d ", hf.Name, len(hf.Params), len(stackParams))
 	}
 
-	params := make(Params, len(hf.Params))
+	packedDataArray := make([]PackedData, len(hf.Params))
 
 	for i := range hf.Params {
-
-		packedData := &stackParams[i]
-
-		data, offset, offsetSize, err := m.Read(*packedData)
-		if err != nil {
-			err = errors.Join(errors.New("can't read params packed data"), err)
-			return nil, err
-		}
-
-		params[i] = Param{
-			Offset: offset,
-			Size:   offsetSize,
-			Value:  data,
-		}
-
+		packedDataArray = append(packedDataArray, PackedData(stackParams[i]))
 	}
 
-	return params, nil
+	return packedDataArray, nil
 
 }
 

@@ -9,8 +9,8 @@ import (
 
 type PackedData uint64
 
-func (pd *PackedData) ReadBytes() []byte {
-	valueType, offsetU32, size := unpackDataAndCheckType(*pd, types.ValueTypeBytes)
+func ReadBytesPack(pd PackedData) []byte {
+	valueType, offsetU32, size := unpackDataAndCheckType(pd, types.ValueTypeBytes)
 	if valueType != types.ValueTypeBytes {
 		LogError("value type %s is not a type of %s", valueType, types.ValueTypeBytes)
 		return nil
@@ -19,8 +19,8 @@ func (pd *PackedData) ReadBytes() []byte {
 	return readBytes(uint64(offsetU32), int(size))
 }
 
-func (pd *PackedData) ReadByte() byte {
-	valueType, offsetU32, _ := unpackDataAndCheckType(*pd, types.ValueTypeByte)
+func ReadBytePack(pd PackedData) byte {
+	valueType, offsetU32, _ := unpackDataAndCheckType(pd, types.ValueTypeByte)
 	if valueType != types.ValueTypeByte {
 		LogError("value type %s is not a type of %s", valueType, types.ValueTypeByte)
 		return 0
@@ -29,8 +29,8 @@ func (pd *PackedData) ReadByte() byte {
 	return readByte(uint64(offsetU32))
 }
 
-func (pd *PackedData) ReadI32() uint32 {
-	valueType, offsetU32, _ := unpackDataAndCheckType(*pd, types.ValueTypeI32)
+func ReadI32Pack(pd PackedData) uint32 {
+	valueType, offsetU32, _ := unpackDataAndCheckType(pd, types.ValueTypeI32)
 	if valueType != types.ValueTypeI32 {
 		LogError("value type %s is not a type of %s", valueType, types.ValueTypeI32)
 		return 0
@@ -39,8 +39,8 @@ func (pd *PackedData) ReadI32() uint32 {
 	return readI32(uint64(offsetU32))
 }
 
-func (pd *PackedData) ReadI64() uint64 {
-	valueType, offsetU32, _ := unpackDataAndCheckType(*pd, types.ValueTypeI64)
+func ReadI64Pack(pd PackedData) uint64 {
+	valueType, offsetU32, _ := unpackDataAndCheckType(pd, types.ValueTypeI64)
 	if valueType != types.ValueTypeI64 {
 		LogError("value type %s is not a type of %s", valueType, types.ValueTypeI64)
 		return 0
@@ -49,8 +49,8 @@ func (pd *PackedData) ReadI64() uint64 {
 	return readI64(uint64(offsetU32))
 }
 
-func (pd *PackedData) ReadF32() float32 {
-	valueType, offsetU32, _ := unpackDataAndCheckType(*pd, types.ValueTypeF32)
+func ReadF32Pack(pd PackedData) float32 {
+	valueType, offsetU32, _ := unpackDataAndCheckType(pd, types.ValueTypeF32)
 	if valueType != types.ValueTypeF32 {
 		LogError("value type %s is not a type of %s", valueType, types.ValueTypeF32)
 		return 0
@@ -59,8 +59,8 @@ func (pd *PackedData) ReadF32() float32 {
 	return readF32(uint64(offsetU32))
 }
 
-func (pd *PackedData) ReadF64() float64 {
-	valueType, offsetU32, _ := unpackDataAndCheckType(*pd, types.ValueTypeF64)
+func ReadF64Pack(pd PackedData) float64 {
+	valueType, offsetU32, _ := unpackDataAndCheckType(pd, types.ValueTypeF64)
 	if valueType != types.ValueTypeF64 {
 		LogError("value type %s is not a type of %s", valueType, types.ValueTypeF64)
 		return 0
@@ -69,8 +69,8 @@ func (pd *PackedData) ReadF64() float64 {
 	return readF64(uint64(offsetU32))
 }
 
-func (pd *PackedData) ReadString() string {
-	valueType, offsetU32, size := unpackDataAndCheckType(*pd, types.ValueTypeString)
+func ReadStringPack(pd PackedData) string {
+	valueType, offsetU32, size := unpackDataAndCheckType(pd, types.ValueTypeString)
 	if valueType != types.ValueTypeString {
 		LogError("value type %s is not a type of %s", valueType, types.ValueTypeString)
 		return ""
@@ -79,8 +79,8 @@ func (pd *PackedData) ReadString() string {
 	return readString(uint64(offsetU32), int(size))
 }
 
-func (pd *PackedData) Free() {
-	_, offset, _ := unpackUI64(uint64(*pd))
+func FreePack(pd PackedData) {
+	_, offset, _ := unpackUI64(uint64(pd))
 	free(uint64(offset))
 }
 
@@ -141,7 +141,7 @@ func (mpd *MultiPackedData) Free() {
 	// free offsets of each packed data in the array
 	offsets := mpd.Read()
 	for _, offset := range offsets {
-		offset.Free()
+		FreePack(offset)
 	}
 
 	// free self offset of multipackdata
@@ -201,6 +201,10 @@ func WriteStringPack(data string) PackedData {
 //
 // MultiPackedData: The offset in memory where the packed array data starts.
 func WriteMultiPack(params ...PackedData) MultiPackedData {
+
+	if len(params) == 0 {
+		return 0
+	}
 
 	multiPackedDataArray := make([]PackedData, len(params))
 
