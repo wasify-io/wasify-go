@@ -72,13 +72,13 @@ func (hf *HostFunction) preHostFunctionCallback(ctx context.Context, m *ModulePr
 		return nil, fmt.Errorf("%s: params mismatch expected: %d received: %d ", hf.Name, len(hf.Params), len(stackParams))
 	}
 
-	multiPackedData := make([]PackedData, len(hf.Params))
+	pds := make([]PackedData, len(hf.Params))
 
 	for i := range hf.Params {
-		multiPackedData = append(multiPackedData, PackedData(stackParams[i]))
+		pds[i] = PackedData(stackParams[i])
 	}
 
-	return multiPackedData, nil
+	return pds, nil
 
 }
 

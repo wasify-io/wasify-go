@@ -47,18 +47,18 @@ type Memory interface {
 	WriteFloat64(offset uint32, v float64) error
 	WriteString(offset uint32, v string) error
 
-	WriteBytesPack(v []byte, size uint32) (PackedData, error)
-	WriteBytePack(v byte) (PackedData, error)
-	WriteUint32Pack(v uint32) (PackedData, error)
-	WriteUint64Pack(v uint64) (PackedData, error)
-	WriteFloat32Pack(v float32) (PackedData, error)
-	WriteFloat64Pack(v float64) (PackedData, error)
-	WriteStringPack(v string, size uint32) (PackedData, error)
+	WriteBytesPack(v []byte) PackedData
+	WriteBytePack(v byte) PackedData
+	WriteUint32Pack(v uint32) PackedData
+	WriteUint64Pack(v uint64) PackedData
+	WriteFloat32Pack(v float32) PackedData
+	WriteFloat64Pack(v float64) PackedData
+	WriteStringPack(v string) PackedData
 
 	WriteMultiPack(...PackedData) MultiPackedData
 
-	FreePack(pd PackedData) error
-	Free(offset uint32) error
+	FreePack(...PackedData) error
+	Free(...uint32) error
 
 	Size() uint32
 	Malloc(size uint32) (uint32, error)

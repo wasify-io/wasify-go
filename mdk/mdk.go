@@ -190,11 +190,15 @@ func WriteString(data string, offsetSize uint32) uint64 {
 	return stringToLeakedPtr(data, offsetSize)
 }
 
-func FreePack(pd PackedData) {
-	_, offset, _ := unpackUI64(uint64(pd))
-	Free(uint64(offset))
+func FreePack(pds ...PackedData) {
+	for _, pd := range pds {
+		_, offset, _ := unpackUI64(uint64(pd))
+		Free(uint64(offset))
+	}
 }
 
-func Free(offset uint64) {
-	free(offset)
+func Free(offsets ...uint64) {
+	for _, offset := range offsets {
+		free(offset)
+	}
 }

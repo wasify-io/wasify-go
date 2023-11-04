@@ -255,24 +255,29 @@ func (m *wazeroMemory) WriteBytes(offset uint32, v []byte) error {
 	return nil
 }
 
-func (m *wazeroMemory) WriteBytesPack(v []byte, size uint32) (PackedData, error) {
+func (m *wazeroMemory) WriteBytesPack(v []byte) PackedData {
+
+	size := uint32(len(v))
 
 	offset, err := m.Malloc(size)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
 	err = m.WriteBytes(offset, v)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
 	pd, err := utils.PackUI64(types.ValueTypeBytes, offset, size)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
-	return PackedData(pd), err
+	return PackedData(pd)
 }
 
 func (m *wazeroMemory) WriteByte(offset uint32, v byte) error {
@@ -285,24 +290,27 @@ func (m *wazeroMemory) WriteByte(offset uint32, v byte) error {
 
 	return nil
 }
-func (m *wazeroMemory) WriteBytePack(v byte) (PackedData, error) {
+func (m *wazeroMemory) WriteBytePack(v byte) PackedData {
 
 	offset, err := m.Malloc(1)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
 	err = m.WriteByte(offset, v)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
 	pd, err := utils.PackUI64(types.ValueTypeByte, offset, 1)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
-	return PackedData(pd), err
+	return PackedData(pd)
 }
 
 func (m *wazeroMemory) WriteUint32(offset uint32, v uint32) error {
@@ -315,24 +323,27 @@ func (m *wazeroMemory) WriteUint32(offset uint32, v uint32) error {
 
 	return nil
 }
-func (m *wazeroMemory) WriteUint32Pack(v uint32) (PackedData, error) {
+func (m *wazeroMemory) WriteUint32Pack(v uint32) PackedData {
 
 	offset, err := m.Malloc(4)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
 	err = m.WriteUint32(offset, v)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
 	pd, err := utils.PackUI64(types.ValueTypeI32, offset, 4)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
-	return PackedData(pd), err
+	return PackedData(pd)
 }
 
 func (m *wazeroMemory) WriteUint64(offset uint32, v uint64) error {
@@ -345,24 +356,27 @@ func (m *wazeroMemory) WriteUint64(offset uint32, v uint64) error {
 
 	return nil
 }
-func (m *wazeroMemory) WriteUint64Pack(v uint64) (PackedData, error) {
+func (m *wazeroMemory) WriteUint64Pack(v uint64) PackedData {
 
 	offset, err := m.Malloc(8)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
 	err = m.WriteUint64(offset, v)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
 	pd, err := utils.PackUI64(types.ValueTypeI32, offset, 8)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
-	return PackedData(pd), err
+	return PackedData(pd)
 }
 
 func (m *wazeroMemory) WriteFloat32(offset uint32, v float32) error {
@@ -375,24 +389,27 @@ func (m *wazeroMemory) WriteFloat32(offset uint32, v float32) error {
 
 	return nil
 }
-func (m *wazeroMemory) WriteFloat32Pack(v float32) (PackedData, error) {
+func (m *wazeroMemory) WriteFloat32Pack(v float32) PackedData {
 
 	offset, err := m.Malloc(4)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
 	err = m.WriteFloat32(offset, v)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
 	pd, err := utils.PackUI64(types.ValueTypeF32, offset, 4)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
-	return PackedData(pd), err
+	return PackedData(pd)
 }
 
 func (m *wazeroMemory) WriteFloat64(offset uint32, v float64) error {
@@ -405,24 +422,27 @@ func (m *wazeroMemory) WriteFloat64(offset uint32, v float64) error {
 
 	return nil
 }
-func (m *wazeroMemory) WriteFloat64Pack(v float64) (PackedData, error) {
+func (m *wazeroMemory) WriteFloat64Pack(v float64) PackedData {
 
 	offset, err := m.Malloc(8)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
 	err = m.WriteFloat64(offset, v)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
 	pd, err := utils.PackUI64(types.ValueTypeF64, offset, 8)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
-	return PackedData(pd), err
+	return PackedData(pd)
 }
 
 func (m *wazeroMemory) WriteString(offset uint32, v string) error {
@@ -436,24 +456,29 @@ func (m *wazeroMemory) WriteString(offset uint32, v string) error {
 
 	return nil
 }
-func (m *wazeroMemory) WriteStringPack(v string, size uint32) (PackedData, error) {
+func (m *wazeroMemory) WriteStringPack(v string) PackedData {
+
+	size := uint32(len(v))
 
 	offset, err := m.Malloc(size)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
 	err = m.WriteString(offset, v)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
 	pd, err := utils.PackUI64(types.ValueTypeString, offset, size)
 	if err != nil {
-		return 0, err
+		m.log.Error(err.Error())
+		return 0
 	}
 
-	return PackedData(pd), err
+	return PackedData(pd)
 }
 
 func (m *wazeroMemory) WriteMultiPack(pds ...PackedData) MultiPackedData {
@@ -501,7 +526,7 @@ func (r *wazeroMemory) Size() uint32 {
 // returning the allocated memory offset to be used in a guest function.
 // This can be helpful, for instance, when passing string data from the host to the guest.
 //
-// Note: Always make sure to free memory after allocation.
+// NOTE: Always make sure to free memory after allocation.
 func (m *wazeroMemory) Malloc(size uint32) (uint32, error) {
 
 	r, err := m.wazeroModule.GuestFunction(m.wazeroModule.ctx, "malloc").call(uint64(size))
@@ -518,21 +543,27 @@ func (m *wazeroMemory) Malloc(size uint32) (uint32, error) {
 // Free releases the memory block at the specified offset in wazeroMemory.
 // It invokes the "free" GuestFunction of the associated wazeroModule using the provided offset parameter.
 // Returns any encountered error during the memory deallocation.
-//
-// In most cases, parameter `offset` is the value returned from Malloc func.
-func (m *wazeroMemory) Free(offset uint32) error {
+func (m *wazeroMemory) Free(offsets ...uint32) error {
 
-	_, err := m.wazeroModule.GuestFunction(m.ModuleConfig.ctx, "free").call(uint64(offset))
-
-	if err != nil {
-		err = errors.Join(fmt.Errorf("can't invoke free function"), err)
-		return err
+	for _, offset := range offsets {
+		_, err := m.wazeroModule.GuestFunction(m.ModuleConfig.ctx, "free").call(uint64(offset))
+		if err != nil {
+			err = errors.Join(fmt.Errorf("can't invoke free function"), err)
+			return err
+		}
 	}
 
-	return err
+	return nil
 }
 
-func (m *wazeroMemory) FreePack(pd PackedData) error {
-	_, offset, _ := utils.UnpackUI64(uint64(pd))
-	return m.Free(offset)
+func (m *wazeroMemory) FreePack(pds ...PackedData) error {
+
+	for _, pd := range pds {
+		_, offset, _ := utils.UnpackUI64(uint64(pd))
+		if err := m.Free(offset); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
