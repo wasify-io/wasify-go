@@ -26,37 +26,37 @@ func TestHostFunctions(t *testing.T) {
 		HostFunctions: []wasify.HostFunction{
 			{
 				Name: "hostTest",
-				Callback: func(ctx context.Context, m wasify.ModuleProxy, params wasify.Params) *wasify.Results {
+				Callback: func(ctx context.Context, m *wasify.ModuleProxy, params []wasify.PackedData) wasify.MultiPackedData {
 
-					_bytes, _ := params[0].Value.([]byte)
+					_bytes, _ := m.Memory.ReadBytesPack(params[0])
 					assert.Equal(t, []byte("Guest: Wello Wasify!"), _bytes)
 
-					_byte, _ := params[1].Value.(byte)
+					_byte, _ := m.Memory.ReadBytePack(params[1])
 					assert.Equal(t, byte(1), _byte)
 
-					_uint32, _ := params[2].Value.(uint32)
+					_uint32, _ := m.Memory.ReadUint32Pack(params[2])
 					assert.Equal(t, uint32(11), _uint32)
 
-					_uint64, _ := params[3].Value.(uint64)
+					_uint64, _ := m.Memory.ReadUint64Pack(params[3])
 					assert.Equal(t, uint64(2023), _uint64)
 
-					_float32, _ := params[4].Value.(float32)
+					_float32, _ := m.Memory.ReadFloat32Pack(params[4])
 					assert.Equal(t, float32(11.1), _float32)
 
-					_float64, _ := params[5].Value.(float64)
+					_float64, _ := m.Memory.ReadFloat64Pack(params[5])
 					assert.Equal(t, float64(11.2023), _float64)
 
-					_string, _ := params[6].Value.(string)
+					_string, _ := m.Memory.ReadStringPack(params[6])
 					assert.Equal(t, "Guest: Wasify.", _string)
 
-					return m.Return(
-						[]byte("Host: Wello Wasify!"),
-						byte(1),
-						uint32(11),
-						uint64(2023),
-						float32(11.1),
-						float64(11.2023),
-						"Host: Wasify.",
+					return m.Memory.WriteMultiPack(
+						m.Memory.WriteBytesPack([]byte("Some")),
+						m.Memory.WriteBytePack(1),
+						m.Memory.WriteUint32Pack(11),
+						m.Memory.WriteUint64Pack(2023),
+						m.Memory.WriteFloat32Pack(11.1),
+						m.Memory.WriteFloat64Pack(11.2023),
+						m.Memory.WriteStringPack("Host: Wasify."),
 					)
 
 				},

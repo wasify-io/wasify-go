@@ -10,24 +10,22 @@ func main() {}
 
 //export guestTest
 func _guestTest(
-	_bytes mdk.ArgData,
-	_byte mdk.ArgData,
-	_i32 mdk.ArgData,
-	_i64 mdk.ArgData,
-	_f32 mdk.ArgData,
-	_f64 mdk.ArgData,
-	_string mdk.ArgData,
-	_any mdk.ArgData,
+	_bytes mdk.PackedData,
+	_byte mdk.PackedData,
+	_i32 mdk.PackedData,
+	_i64 mdk.PackedData,
+	_f32 mdk.PackedData,
+	_f64 mdk.PackedData,
+	_string mdk.PackedData,
 ) {
 
-	v1, _ := mdk.ReadBytes(_bytes)
-	v2 := mdk.ReadByte(_byte)
-	v3 := mdk.ReadI32(_i32)
-	v4 := mdk.ReadI64(_i64)
-	v5 := mdk.ReadF32(_f32)
-	v6 := mdk.ReadF64(_f64)
-	v7, _ := mdk.ReadString(_string)
-	v8, _ := mdk.ReadAny(_any)
+	v1 := mdk.ReadBytesPack(_bytes)
+	v2 := mdk.ReadBytePack(_byte)
+	v3 := mdk.ReadI32Pack(_i32)
+	v4 := mdk.ReadI64Pack(_i64)
+	v5 := mdk.ReadF32Pack(_f32)
+	v6 := mdk.ReadF64Pack(_f64)
+	v7 := mdk.ReadStringPack(_string)
 
 	fmt.Println("Test Resu: ",
 		v1,
@@ -37,7 +35,6 @@ func _guestTest(
 		v5,
 		v6,
 		v7,
-		v8,
 	)
 
 	defer mdk.Free(
@@ -48,6 +45,5 @@ func _guestTest(
 		_f32,
 		_f64,
 		_string,
-		_any,
 	)
 }

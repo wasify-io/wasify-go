@@ -58,3 +58,27 @@ func Uint64ArrayToBytes(data []uint64) []byte {
 	// Return the result slice of bytes.
 	return result
 }
+
+// BytesToUint64Array converts a slice of bytes to a slice of uint64 integers.
+// This function is typically used to convert a slice of bytes (which might have
+// been stored in linear memory) back into packed data in the form of uint64 integers.
+func BytesToUint64Array(data []byte) []uint64 {
+	// Calculate the number of uint64 integers that can be extracted from the slice of bytes.
+	// Since each uint64 integer is represented by 8 bytes, we divide the length of the
+	// byte slice by 8 to determine the number of uint64 integers.
+	size := len(data) / 8
+
+	result := make([]uint64, size)
+
+	for i := 0; i < size; i++ {
+		// Convert a slice of bytes starting at position i*8 into its uint64 representation
+		// in little-endian order. The binary.LittleEndian.Uint64 function takes a slice
+		// of bytes and returns its representation as a uint64 integer.
+		// The data[i<<3:] slice expression ensures that we're reading the correct bytes
+		// for each uint64 integer. As before, i<<3 is a more efficient way of computing i*8.
+		result[i] = binary.LittleEndian.Uint64(data[i<<3:])
+	}
+
+	// Return the result slice of uint64 integers.
+	return result
+}

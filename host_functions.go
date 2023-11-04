@@ -2,8 +2,6 @@ package wasify
 
 import (
 	"context"
-
-	"github.com/wasify-io/wasify-go/internal/memory"
 )
 
 const WASIFY_NAMESPACE = "wasify"
@@ -23,12 +21,21 @@ func (hf *hostFunctions) newLog() *HostFunction {
 
 	log := &HostFunction{
 		Name: "log",
-		Callback: func(ctx context.Context, m ModuleProxy, params Params) *Results {
+		Callback: func(ctx context.Context, m *ModuleProxy, params []PackedData) MultiPackedData {
 
-			msg := params[0].Value.(string)
-			lvl := LogSeverity(params[1].Value.(uint8))
+			msg, err := m.Memory.ReadStringPack(params[0])
+			if err != nil {
+				panic(err)
+			}
 
-			switch lvl {
+			lvl, err := m.Memory.ReadBytePack(params[0])
+			if err != nil {
+				panic(err)
+			}
+
+			severity := LogSeverity(lvl)
+
+			switch severity {
 			case LogDebug:
 				hf.moduleConfig.log.Debug(msg)
 			case LogInfo:
@@ -39,15 +46,14 @@ func (hf *hostFunctions) newLog() *HostFunction {
 				hf.moduleConfig.log.Error(msg)
 			}
 
-			return nil
+			return 0
 
 		},
 		Params:  []ValueType{ValueTypeBytes, ValueTypeBytes},
 		Results: nil,
 
 		// required fields
-		moduleConfig:  hf.moduleConfig,
-		allocationMap: memory.NewAllocationMap[uint32, uint32](),
+		moduleConfig: hf.moduleConfig,
 	}
 
 	return log

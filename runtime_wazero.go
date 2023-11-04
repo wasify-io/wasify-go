@@ -5,11 +5,11 @@ package wasify
 import (
 	"context"
 	"errors"
+	"os"
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
-	"github.com/wasify-io/wasify-go/internal/memory"
 	"github.com/wasify-io/wasify-go/internal/utils"
 )
 
@@ -149,14 +149,8 @@ func (r *wazeroRuntime) instantiateHostFunctions(ctx context.Context, wazeroModu
 
 		// Associate the host function with module-related information.
 		// This configuration ensures that the host function can access ModuleConfig data from various contexts.
-		// Additionally, we set up an allocationMap specific to the host function, creating a map that stores
-		// offsets and sizes relevant to the host function's operations. This allows us to manage and clean up
-		// user resources effectively.
-		// We use allocationMap operations for Params provided in host function and Results, which originally
-		// should be freed up.
 		// See host_function.go for more details.
 		hf.moduleConfig = moduleConfig
-		hf.allocationMap = memory.NewAllocationMap[uint32, uint32]()
 
 		// If hsot function has any return values, we pack it as a single uint64
 		var resultValuesPackedData = []ValueType{}
@@ -223,6 +217,9 @@ func (r *wazeroRuntime) instantiateModule(ctx context.Context, moduleConfig *Mod
 
 	// TODO: Add more configurations
 	cfg := wazero.NewModuleConfig()
+	cfg = cfg.WithStdin(os.Stdin)
+	cfg = cfg.WithStdout(os.Stdout)
+	cfg = cfg.WithStderr(os.Stderr)
 
 	if moduleConfig != nil && moduleConfig.FSConfig.Enabled {
 		cfg = cfg.WithFSConfig(

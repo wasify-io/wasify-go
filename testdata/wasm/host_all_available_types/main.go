@@ -8,24 +8,24 @@ func main() {}
 
 //go:wasmimport host_all_available_types hostTest
 func hostTest(
-	mdk.ArgData,
-	mdk.ArgData,
-	mdk.ArgData,
-	mdk.ArgData,
-	mdk.ArgData,
-	mdk.ArgData,
-	mdk.ArgData,
-) mdk.ResultOffset
+	mdk.PackedData,
+	mdk.PackedData,
+	mdk.PackedData,
+	mdk.PackedData,
+	mdk.PackedData,
+	mdk.PackedData,
+	mdk.PackedData,
+) mdk.MultiPackedData
 
 //export guestTest
 func _guestTest() {
 	hostTest(
-		mdk.Arg([]byte("Guest: Wello Wasify!")),
-		mdk.Arg(byte(1)),
-		mdk.Arg(uint32(11)),
-		mdk.Arg(uint64(2023)),
-		mdk.Arg(float32(11.1)),
-		mdk.Arg(float64(11.2023)),
-		mdk.Arg("Guest: Wasify."),
+		mdk.WriteBytesPack([]byte("Guest: Wello Wasify!")),
+		mdk.WriteBytePack(byte(1)),
+		mdk.WriteUint32Pack(uint32(11)),
+		mdk.WriteUint64Pack(uint64(2023)),
+		mdk.WriteFloat32Pack(float32(11.1)),
+		mdk.WriteFloat64Pack(float64(11.2023)),
+		mdk.WriteStringPack("Guest: Wasify."),
 	)
 }

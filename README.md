@@ -4,13 +4,15 @@
 
 wasify simplifies communication with the WebAssembly System Interface (WASI), eliminating the need for developers to delve into intricate details or communicate using numbers, which is the standard method of interaction with modules. This library significantly eases the process of running and working with wasm modules, which has traditionally been a less straightforward task.
 
-
 ---
+
 > [!WARNING]
-> - **The project is still being worked on, and there might be significant changes coming;**
-> - Requires Go v1.21
+>
+> -   **The project is still being worked on, and there might be significant changes coming;**
+> -   Requires Go v1.21
 
 ---
+
 ## Installation
 
 ```bash
@@ -46,26 +48,48 @@ func main() {
     defer runtime.Close(ctx)
 
     module, _ := runtime.NewModule(ctx, &wasify.ModuleConfig{
-        Name: "myEnv",
+        Name: "host_all_available_types",
         Wasm: wasify.Wasm{
             Binary: moduleData,
         },
         HostFunctions: []wasify.HostFunction{
             {
-                Name: "hostFunc",
-                Callback: func(ctx context.Context, m wasify.ModuleProxy, params wasify.Params) *wasify.Results {
+                Name: "hostTest",
+                Callback: func(ctx context.Context, m *wasify.ModuleProxy, params []wasify.PackedData) wasify.MultiPackedData {
 
-                    fmt.Println("Host func param 0: ", params[0].Value)
-                    fmt.Println("Host func param 1: ", params[1].Value)
+                    bytes, _ := m.Memory.ReadBytesPack(params[0])
+                    fmt.Println("Param 1: ", bytes)
+                    // ...
 
-                    return m.Return(
-                        []byte("Hello"),
-                        uint32(1234),
-                    )
+                    return m.Memory.WriteMultiPack(
+						m.Memory.WriteBytesPack([]byte("Some")),
+						m.Memory.WriteBytePack(1),
+						m.Memory.WriteUint32Pack(11),
+						m.Memory.WriteUint64Pack(2023),
+						m.Memory.WriteFloat32Pack(11.1),
+						m.Memory.WriteFloat64Pack(11.2023),
+						m.Memory.WriteStringPack("Host: Wasify."),
+					)
 
                 },
-                Params:  []wasify.ValueType{wasify.ValueTypeString, wasify.ValueTypeI32},
-                Results: []wasify.ValueType{wasify.ValueTypeBytes, wasify.ValueTypeI32},
+                Params: []wasify.ValueType{
+					wasify.ValueTypeBytes,
+					wasify.ValueTypeByte,
+					wasify.ValueTypeI32,
+					wasify.ValueTypeI64,
+					wasify.ValueTypeF32,
+					wasify.ValueTypeF64,
+					wasify.ValueTypeString,
+				},
+				Results: []wasify.ValueType{
+					wasify.ValueTypeBytes,
+					wasify.ValueTypeByte,
+					wasify.ValueTypeI32,
+					wasify.ValueTypeI64,
+					wasify.ValueTypeF32,
+					wasify.ValueTypeF64,
+					wasify.ValueTypeString,
+				},
             },
         },
     })
@@ -73,7 +97,7 @@ func main() {
     defer module.Close(ctx)
 
     // Call guest function
-    module.GuestFunction(ctx, "greet").Invoke()
+    module.GuestFunction(ctx, "greet").Invoke("example arg", 2023)
 
 }
 ```
@@ -83,26 +107,40 @@ func main() {
 ```go
 package main
 
-import "github.com/wasify-io/wasify-go/mdk"
+import (
+	"github.com/wasify-io/wasify-go/mdk"
+)
 
 func main() {}
 
-//go:wasmimport myEnv hostFunc
-func hostFunc(mdk.ArgData, mdk.ArgData) mdk.ResultOffset
+//go:wasmimport host_all_available_types hostTest
+func hostTest(
+	mdk.PackedData,
+	mdk.PackedData,
+	mdk.PackedData,
+	mdk.PackedData,
+	mdk.PackedData,
+	mdk.PackedData,
+	mdk.PackedData,
+) mdk.MultiPackedData
 
-//export greet
-func greet() {
-    resultOffset := hostFunc(mdk.Arg("Hello"), mdk.Arg(uint32(2023)))
-
-    results := mdk.ReadResults(resultOffset)
-
-    for i, result := range results {
-        mdk.Log("Guest func result %d: %s", i, result.Data)
-    }
+//export guestTest
+func _guestTest() {
+	hostTest(
+		mdk.WriteBytesPack([]byte("Guest: Wello Wasify!")),
+		mdk.WriteBytePack(byte(1)),
+		mdk.WriteUint32Pack(uint32(11)),
+		mdk.WriteUint64Pack(uint64(2023)),
+		mdk.WriteFloat32Pack(float32(11.1)),
+		mdk.WriteFloat64Pack(float64(11.2023)),
+		mdk.WriteStringPack("Guest: Wasify."),
+	)
 }
+
 ```
 
 Build module using [TinyGo](https://tinygo.org/)
+
 ```
 tinygo build -o ./module/example.wasm -target wasi ./module/example.go
 ```
@@ -112,4 +150,3 @@ Run main.go `go run .`
 ## Contributing
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
