@@ -31,23 +31,23 @@ func TestHostFunctions(t *testing.T) {
 					_bytes, _ := m.Memory.ReadBytesPack(params[0])
 					assert.Equal(t, []byte("Guest: Wello Wasify!"), _bytes)
 
-					// _byte, _ := m.Memory.ReadBytePack(params[1])
-					// assert.Equal(t, byte(1), _byte)
+					_byte, _ := m.Memory.ReadBytePack(params[1])
+					assert.Equal(t, byte(1), _byte)
 
-					// _uint32, _ := m.Memory.ReadUint32Pack(params[2])
-					// assert.Equal(t, uint32(11), _uint32)
+					_uint32, _ := m.Memory.ReadUint32Pack(params[2])
+					assert.Equal(t, uint32(11), _uint32)
 
-					// _uint64, _ := m.Memory.ReadUint64Pack(params[3])
-					// assert.Equal(t, uint64(2023), _uint64)
+					_uint64, _ := m.Memory.ReadUint64Pack(params[3])
+					assert.Equal(t, uint64(2023), _uint64)
 
-					// _float32, _ := m.Memory.ReadFloat32Pack(params[4])
-					// assert.Equal(t, float32(11.1), _float32)
+					_float32, _ := m.Memory.ReadFloat32Pack(params[4])
+					assert.Equal(t, float32(11.1), _float32)
 
-					// _float64, _ := m.Memory.ReadFloat64Pack(params[5])
-					// assert.Equal(t, float64(11.2023), _float64)
+					_float64, _ := m.Memory.ReadFloat64Pack(params[5])
+					assert.Equal(t, float64(11.2023), _float64)
 
-					// _string, _ := m.Memory.ReadStringPack(params[6])
-					// assert.Equal(t, "Guest: Wasify.", _string)
+					_string, _ := m.Memory.ReadStringPack(params[6])
+					assert.Equal(t, "Guest: Wasify.", _string)
 
 					return m.Memory.WriteMultiPack(
 						m.Memory.WriteBytesPack([]byte("Some")),
