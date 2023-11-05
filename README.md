@@ -2,7 +2,7 @@
 
 `wasify-go` is a Go library designed to streamline the interaction with WebAssembly (Wasm) modules by providing a developer-friendly API. It abstracts the [Wazero](https://github.com/tetratelabs/wazero) runtime.
 
-wasify simplifies communication with the WebAssembly System Interface (WASI), eliminating the need for developers to delve into intricate details or communicate using numbers, which is the standard method of interaction with modules. This library significantly eases the process of running and working with wasm modules, which has traditionally been a less straightforward task.
+wasify simplifies WASM development, eliminating the need for developers to delve into intricate details or communicate using numbers, which is the standard method of interaction with modules. This library significantly eases the process of running and working with wasm modules, which has traditionally been a less straightforward task.
 
 ## Installation
 
